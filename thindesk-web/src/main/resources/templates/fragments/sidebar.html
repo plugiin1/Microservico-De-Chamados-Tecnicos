@@ -18,11 +18,6 @@
                     <li class="nav-item">
                         <a class="nav-link" th:href="@{/}" aria-current="page">Início</a>
                     </li>
-                    <li class="nav-item">
-                        <a class="nav-link" th:href="@{/chamados}">
-                            <i class="bi bi-headset"></i> <span class="d-none d-md-inline">Chamados</span>
-                        </a>
-                    </li>
                     <li class="nav-item" sec:authorize="hasAnyRole('ADMIN', 'TECNICO')">
                         <a class="nav-link" th:href="@{/clientes}">
                             <i class="bi bi-person"></i> <span class="d-none d-md-inline">Clientes</span>

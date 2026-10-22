@@ -1,7 +1,6 @@
 package com.pfc.thindesk.controller;
 
 import com.pfc.thindesk.entity.HorarioAtendimento;
-import com.pfc.thindesk.service.ChamadoService;
 import com.pfc.thindesk.service.ClienteService;
 import com.pfc.thindesk.service.HorarioAtendimentoService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -13,8 +12,6 @@ import org.springframework.web.bind.annotation.GetMapping;
 public class HomeController {
 
     @Autowired
-    private ChamadoService chamadoService;
-    @Autowired
     private ClienteService clienteService;
     @Autowired
     private HorarioAtendimentoService horarioAtendimentoService;
@@ -22,12 +19,6 @@ public class HomeController {
     @GetMapping("/")
     public String home() {
         return "home";
-    }
-
-    @GetMapping("/chamados")
-    public String chamados(Model model) {
-        model.addAttribute("chamados", chamadoService.listarChamados());
-        return "chamados";
     }
 
     @GetMapping("/clientes")
