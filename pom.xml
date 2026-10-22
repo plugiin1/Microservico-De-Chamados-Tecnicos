@@ -19,6 +19,7 @@
     <modules>
         <module>auth-core</module>
         <module>thindesk-web</module>
+        <module>chamados-service</module>
     </modules>
 
     <properties>
