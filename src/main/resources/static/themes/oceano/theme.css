@@ -1,0 +1,10 @@
+:root {
+    --app-sidebar-bg: #0b3954;
+    --app-sidebar-color: #e0f2f1;
+    --app-sidebar-hover: #087e8b;
+    --app-primary: #087e8b;
+    --app-primary-hover: #066a75;
+    --app-body-bg: #f4fbfb;
+    --app-auth-bg: linear-gradient(135deg, #0b3954 0%, #087e8b 100%);
+    --app-card-bg: #ffffff;
+}

@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+      layout:decorate="~{layouts/auth}">
+<head>
+    <title>Login</title>
+</head>
+<body>
+    <div layout:fragment="content">
+        <h3 class="mb-4 text-center">Bem-vindo</h3>
+
+        <div th:if="${param.error}" class="alert alert-danger" role="alert">
+            Usuário ou senha inválidos.
+        </div>
+        <div th:if="${param.logout}" class="alert alert-success" role="alert">
+            Você saiu do sistema.
+        </div>
+        <div th:if="${param.cadastrado}" class="alert alert-success" role="alert">
+            Cadastro realizado. Faça login para continuar.
+        </div>
+
+        <form th:action="@{/login}" method="post">
+            <div class="mb-3">
+                <label for="username" class="form-label">Usuário</label>
+                <input type="text" class="form-control" id="username" name="username"
+                       placeholder="Digite seu nome de usuário" autocomplete="username" required autofocus>
+            </div>
+            <div class="mb-3">
+                <label for="password" class="form-label">Senha</label>
+                <input type="password" class="form-control" id="password" name="password"
+                       placeholder="Digite sua senha" autocomplete="current-password" required>
+            </div>
+            <button type="submit" class="btn btn-primary w-100">Entrar</button>
+        </form>
+
+        <div class="mt-3 text-center">
+            Não tem conta? <a th:href="@{/cadastro}" class="text-decoration-none">Cadastre-se</a>
+        </div>
+    </div>
+</body>
+</html>

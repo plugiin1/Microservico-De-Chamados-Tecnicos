@@ -1,0 +1,111 @@
+body.layout-app {
+    display: flex;
+    min-height: 100vh;
+    flex-direction: row;
+    background: var(--app-body-bg);
+}
+
+#sidebar {
+    min-width: 250px;
+    max-width: 250px;
+    background-color: var(--app-sidebar-bg);
+    color: var(--app-sidebar-color);
+    height: 100vh;
+    position: sticky;
+    top: 0;
+    overflow-y: auto;
+}
+
+#sidebar a,
+#sidebar .btn-link {
+    color: var(--app-sidebar-color);
+    text-decoration: none;
+}
+
+#sidebar a:hover,
+#sidebar .btn-link:hover {
+    background-color: var(--app-sidebar-hover);
+    color: var(--app-sidebar-color);
+}
+
+#sidebar .nav-item .submenu {
+    display: none;
+    padding-left: 1.5rem;
+}
+
+#sidebar .nav-item.open .submenu {
+    display: block;
+}
+
+#content {
+    flex-grow: 1;
+    padding: 20px;
+    min-width: 0;
+}
+
+.btn-primary {
+    --bs-btn-bg: var(--app-primary);
+    --bs-btn-border-color: var(--app-primary);
+    --bs-btn-hover-bg: var(--app-primary-hover);
+    --bs-btn-hover-border-color: var(--app-primary-hover);
+    --bs-btn-active-bg: var(--app-primary-hover);
+    --bs-btn-active-border-color: var(--app-primary-hover);
+    --bs-btn-disabled-bg: var(--app-primary);
+    --bs-btn-disabled-border-color: var(--app-primary);
+}
+
+body.layout-auth {
+    min-height: 100vh;
+    background: var(--app-auth-bg);
+}
+
+.auth-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    padding: 2rem 1rem;
+}
+
+.auth-card {
+    max-width: 440px;
+    width: 100%;
+    padding: 2rem;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+    border-radius: 8px;
+    background-color: var(--app-card-bg);
+}
+
+.auth-logo {
+    width: 100px;
+    height: auto;
+    margin-bottom: 1rem;
+}
+
+@media (max-width: 768px) {
+    #sidebar {
+        position: fixed;
+        left: -250px;
+        top: 0;
+        height: 100%;
+        z-index: 1000;
+        transition: all 0.3s;
+    }
+
+    #sidebar.active {
+        left: 0;
+    }
+
+    #content {
+        margin-left: 0;
+        padding-top: 60px;
+    }
+
+    .toggle-btn {
+        position: fixed;
+        top: 10px;
+        left: 10px;
+        z-index: 1100;
+        cursor: pointer;
+    }
+}

@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+      layout:decorate="~{layouts/base}">
+<head>
+    <title>Usuários</title>
+</head>
+<body>
+    <div layout:fragment="content" class="container mt-4">
+        <h2 class="mb-4">Gerenciar usuários</h2>
+
+        <div th:if="${sucesso}" class="alert alert-success alert-dismissible fade show" role="alert">
+            <span th:text="${sucesso}"></span>
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Fechar"></button>
+        </div>
+        <div th:if="${erro}" class="alert alert-danger alert-dismissible fade show" role="alert">
+            <span th:text="${erro}"></span>
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Fechar"></button>
+        </div>
+
+        <div class="table-responsive">
+            <table class="table table-striped align-middle">
+                <thead>
+                    <tr>
+                        <th>Nome</th>
+                        <th>Usuário</th>
+                        <th>E-mail</th>
+                        <th>Perfil</th>
+                        <th>Situação</th>
+                        <th>Cadastro</th>
+                        <th class="text-end">Ações</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr th:each="usuario : ${usuarios}" th:with="proprio=${usuario.username == usuarioLogado}">
+                        <td>
+                            <span th:text="${usuario.nome}"></span>
+                            <span th:if="${proprio}" class="badge bg-info text-dark">você</span>
+                        </td>
+                        <td th:text="${usuario.username}"></td>
+                        <td th:text="${usuario.email}"></td>
+                        <td>
+                            <form th:action="@{/admin/usuarios/{id}/perfil(id=${usuario.id})}" method="post" class="d-flex gap-1">
+                                <select name="role" class="form-select form-select-sm" style="min-width: 140px;"
+                                        th:disabled="${proprio}" aria-label="Perfil">
+                                    <option th:each="r : ${roles}"
+                                            th:value="${r}"
+                                            th:text="${r.descricao}"
+                                            th:selected="${r == usuario.role}"></option>
+                                </select>
+                                <button type="submit" class="btn btn-sm btn-outline-primary" th:disabled="${proprio}" title="Salvar perfil">
+                                    <i class="bi bi-check-lg"></i>
+                                </button>
+                            </form>
+                        </td>
+                        <td>
+                            <span th:if="${usuario.ativo}" class="badge bg-success">Ativo</span>
+                            <span th:unless="${usuario.ativo}" class="badge bg-secondary">Inativo</span>
+                        </td>
+                        <td th:text="${#temporals.format(usuario.criadoEm, 'dd/MM/yyyy HH:mm')}"></td>
+                        <td class="text-end text-nowrap">
+                            <form th:action="@{/admin/usuarios/{id}/status(id=${usuario.id})}" method="post" class="d-inline">
+                                <input type="hidden" name="ativo" th:value="${!usuario.ativo}">
+                                <button type="submit" class="btn btn-sm"
+                                        th:classappend="${usuario.ativo} ? 'btn-warning' : 'btn-success'"
+                                        th:text="${usuario.ativo} ? 'Desativar' : 'Ativar'"
+                                        th:disabled="${proprio}"></button>
+                            </form>
+                            <form th:action="@{/admin/usuarios/{id}/excluir(id=${usuario.id})}" method="post" class="d-inline"
+                                  th:attr="data-confirm=|Excluir o usuário ${usuario.username}? Esta ação não pode ser desfeita.|">
+                                <button type="submit" class="btn btn-sm btn-danger" th:disabled="${proprio}">Excluir</button>
+                            </form>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</body>
+</html>
