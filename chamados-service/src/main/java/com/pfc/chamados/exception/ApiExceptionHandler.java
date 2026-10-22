@@ -14,6 +14,7 @@ import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 @Slf4j
@@ -48,9 +49,22 @@ public class ApiExceptionHandler {
         return resposta(HttpStatus.NOT_FOUND, "Rota não encontrada.", request, null);
     }
 
+    @ExceptionHandler(RecursoNaoEncontradoException.class)
+    public ResponseEntity<ErroResposta> naoEncontrado(RecursoNaoEncontradoException e, HttpServletRequest request) {
+        return resposta(HttpStatus.NOT_FOUND, e.getMessage(), request, null);
+    }
+
+    @ExceptionHandler(MethodArgumentTypeMismatchException.class)
+    public ResponseEntity<ErroResposta> parametroInvalido(MethodArgumentTypeMismatchException e, HttpServletRequest request) {
+        return resposta(HttpStatus.BAD_REQUEST, "Valor inválido para o parâmetro '" + e.getName() + "'.", request, null);
+    }
+
     @ExceptionHandler(AccessDeniedException.class)
-    public ResponseEntity<ErroResposta> acessoNegado(HttpServletRequest request) {
-        return resposta(HttpStatus.FORBIDDEN, "Você não tem permissão para esta operação.", request, null);
+    public ResponseEntity<ErroResposta> acessoNegado(AccessDeniedException e, HttpServletRequest request) {
+        String mensagem = e.getMessage() == null || e.getMessage().equals("Access Denied")
+                ? "Você não tem permissão para esta operação."
+                : e.getMessage();
+        return resposta(HttpStatus.FORBIDDEN, mensagem, request, null);
     }
 
     @ExceptionHandler(Exception.class)
