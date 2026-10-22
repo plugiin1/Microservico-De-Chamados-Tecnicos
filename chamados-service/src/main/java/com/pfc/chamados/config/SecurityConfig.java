@@ -1,6 +1,7 @@
 package com.pfc.chamados.config;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.pfc.auth.entity.Role;
 import com.pfc.chamados.dto.ErroResposta;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -8,6 +9,7 @@ import java.io.IOException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.security.config.Customizer;
@@ -35,6 +37,8 @@ public class SecurityConfig {
             .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers("/error").permitAll()
+                .requestMatchers(HttpMethod.PUT, "/api/chamados/*/resolver")
+                    .hasAnyRole(Role.TECNICO.name(), Role.ADMIN.name())
                 .anyRequest().authenticated()
             )
             .httpBasic(Customizer.withDefaults())

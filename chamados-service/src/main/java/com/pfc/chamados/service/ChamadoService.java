@@ -4,13 +4,16 @@ import com.pfc.auth.entity.Role;
 import com.pfc.auth.entity.Usuario;
 import com.pfc.auth.repository.UsuarioRepository;
 import com.pfc.chamados.dto.AbrirChamadoRequest;
+import com.pfc.chamados.dto.ResolverChamadoRequest;
 import com.pfc.chamados.entity.Chamado;
 import com.pfc.chamados.entity.StatusChamado;
+import com.pfc.chamados.exception.ChamadoJaResolvidoException;
 import com.pfc.chamados.exception.RecursoNaoEncontradoException;
 import com.pfc.chamados.repository.ChamadoRepository;
 import java.time.Instant;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
+import org.springframework.dao.OptimisticLockingFailureException;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
@@ -57,6 +60,27 @@ public class ChamadoService {
             throw new AccessDeniedException("Você só pode consultar os seus próprios chamados.");
         }
         return chamado;
+    }
+
+    public Chamado resolver(String id, ResolverChamadoRequest request, String username) {
+        Usuario tecnico = buscarUsuarioLogado(username);
+        Chamado chamado = chamadoRepository.findById(id)
+                .orElseThrow(() -> new RecursoNaoEncontradoException("Chamado não encontrado."));
+        if (chamado.getStatus() == StatusChamado.RESOLVIDO) {
+            throw new ChamadoJaResolvidoException();
+        }
+
+        chamado.setSolucao(request.solucao().trim());
+        chamado.setStatus(StatusChamado.RESOLVIDO);
+        chamado.setTecnicoId(tecnico.getId());
+        chamado.setTecnicoUsername(tecnico.getUsername());
+        chamado.setDataResolucao(Instant.now());
+
+        try {
+            return chamadoRepository.save(chamado);
+        } catch (OptimisticLockingFailureException e) {
+            throw new ChamadoJaResolvidoException();
+        }
     }
 
     private boolean isEquipe(Usuario usuario) {

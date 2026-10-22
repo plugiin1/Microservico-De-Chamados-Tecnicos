@@ -2,6 +2,7 @@ package com.pfc.chamados.controller;
 
 import com.pfc.chamados.dto.AbrirChamadoRequest;
 import com.pfc.chamados.dto.ChamadoResposta;
+import com.pfc.chamados.dto.ResolverChamadoRequest;
 import com.pfc.chamados.entity.Chamado;
 import com.pfc.chamados.entity.StatusChamado;
 import com.pfc.chamados.service.ChamadoService;
@@ -10,10 +11,12 @@ import java.net.URI;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -51,5 +54,12 @@ public class ChamadoController {
     @GetMapping("/{id}")
     public ChamadoResposta buscar(@PathVariable String id, Authentication authentication) {
         return ChamadoResposta.de(chamadoService.buscar(id, authentication.getName()));
+    }
+
+    @PutMapping("/{id}/resolver")
+    @PreAuthorize("hasAnyRole('TECNICO', 'ADMIN')")
+    public ChamadoResposta resolver(@PathVariable String id, @Valid @RequestBody ResolverChamadoRequest request,
+                                    Authentication authentication) {
+        return ChamadoResposta.de(chamadoService.resolver(id, request, authentication.getName()));
     }
 }

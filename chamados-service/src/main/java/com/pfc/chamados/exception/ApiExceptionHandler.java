@@ -54,6 +54,11 @@ public class ApiExceptionHandler {
         return resposta(HttpStatus.NOT_FOUND, e.getMessage(), request, null);
     }
 
+    @ExceptionHandler(ChamadoJaResolvidoException.class)
+    public ResponseEntity<ErroResposta> jaResolvido(ChamadoJaResolvidoException e, HttpServletRequest request) {
+        return resposta(HttpStatus.CONFLICT, e.getMessage(), request, null);
+    }
+
     @ExceptionHandler(MethodArgumentTypeMismatchException.class)
     public ResponseEntity<ErroResposta> parametroInvalido(MethodArgumentTypeMismatchException e, HttpServletRequest request) {
         return resposta(HttpStatus.BAD_REQUEST, "Valor inválido para o parâmetro '" + e.getName() + "'.", request, null);
