@@ -1,0 +1,349 @@
+{
+  "info": {
+    "name": "ThinDesk - Microserviço de Chamados",
+    "description": "Endpoints do chamados-service (porta 8081). Execute as requisições na ordem numerada: elas guardam automaticamente o id do usuário e do chamado criado nas variáveis da coleção.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:8081" },
+    { "key": "clienteUser", "value": "teste_cliente" },
+    { "key": "clientePass", "value": "Senha1234" },
+    { "key": "tecnicoUser", "value": "tecnico1" },
+    { "key": "tecnicoPass", "value": "Tecnico123" },
+    { "key": "usuarioId", "value": "" },
+    { "key": "chamadoId", "value": "" }
+  ],
+  "item": [
+    {
+      "name": "1. Quem sou eu (cliente)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status 200', () => pm.response.to.have.status(200));",
+              "const usuario = pm.response.json();",
+              "pm.collectionVariables.set('usuarioId', usuario.id);",
+              "pm.test('Perfil CLIENTE', () => pm.expect(usuario.role).to.eql('CLIENTE'));"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "auth": {
+          "type": "basic",
+          "basic": [
+            { "key": "username", "value": "{{clienteUser}}", "type": "string" },
+            { "key": "password", "value": "{{clientePass}}", "type": "string" }
+          ]
+        },
+        "url": "{{baseUrl}}/api/me",
+        "description": "Retorna os dados do usuário autenticado e salva o id dele na variável usuarioId."
+      }
+    },
+    {
+      "name": "2. Abrir chamado",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status 201 Created', () => pm.response.to.have.status(201));",
+              "const chamado = pm.response.json();",
+              "pm.collectionVariables.set('chamadoId', chamado.id);",
+              "pm.test('Status ABERTO', () => pm.expect(chamado.status).to.eql('ABERTO'));",
+              "pm.test('Solicitante registrado automaticamente', () => pm.expect(chamado.solicitante.id).to.eql(pm.collectionVariables.get('usuarioId')));",
+              "pm.test('Data de abertura registrada', () => pm.expect(chamado.dataAbertura).to.be.a('string'));"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "auth": {
+          "type": "basic",
+          "basic": [
+            { "key": "username", "value": "{{clienteUser}}", "type": "string" },
+            { "key": "password", "value": "{{clientePass}}", "type": "string" }
+          ]
+        },
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"titulo\": \"Computador não liga\",\n  \"descricao\": \"O computador da recepção não liga desde hoje cedo, nem a luz do botão acende.\"\n}",
+          "options": { "raw": { "language": "json" } }
+        },
+        "url": "{{baseUrl}}/api/chamados",
+        "description": "Abre um chamado. Solicitante, data de abertura e status ABERTO são registrados pelo sistema."
+      }
+    },
+    {
+      "name": "3. Abrir chamado inválido (400)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status 400 Bad Request', () => pm.response.to.have.status(400));"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "auth": {
+          "type": "basic",
+          "basic": [
+            { "key": "username", "value": "{{clienteUser}}", "type": "string" },
+            { "key": "password", "value": "{{clientePass}}", "type": "string" }
+          ]
+        },
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"titulo\": \"oi\",\n  \"descricao\": \"\"\n}",
+          "options": { "raw": { "language": "json" } }
+        },
+        "url": "{{baseUrl}}/api/chamados",
+        "description": "Validação: título com menos de 5 caracteres e descrição vazia."
+      }
+    },
+    {
+      "name": "4. Listar chamados do usuário",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status 200', () => pm.response.to.have.status(200));",
+              "pm.test('Retorna uma lista', () => pm.expect(pm.response.json()).to.be.an('array'));"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "auth": {
+          "type": "basic",
+          "basic": [
+            { "key": "username", "value": "{{clienteUser}}", "type": "string" },
+            { "key": "password", "value": "{{clientePass}}", "type": "string" }
+          ]
+        },
+        "url": "{{baseUrl}}/api/chamados/usuario/{{usuarioId}}",
+        "description": "Lista os chamados do usuário, do mais recente para o mais antigo. Aceita o filtro opcional ?status=ABERTO ou ?status=RESOLVIDO."
+      }
+    },
+    {
+      "name": "5. Consultar chamado",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status 200', () => pm.response.to.have.status(200));",
+              "pm.test('Ainda ABERTO', () => pm.expect(pm.response.json().status).to.eql('ABERTO'));"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "auth": {
+          "type": "basic",
+          "basic": [
+            { "key": "username", "value": "{{clienteUser}}", "type": "string" },
+            { "key": "password", "value": "{{clientePass}}", "type": "string" }
+          ]
+        },
+        "url": "{{baseUrl}}/api/chamados/{{chamadoId}}",
+        "description": "Consulta os detalhes e o status do chamado aberto na requisição 2."
+      }
+    },
+    {
+      "name": "6. Resolver como cliente (403)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status 403 Forbidden', () => pm.response.to.have.status(403));"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "PUT",
+        "auth": {
+          "type": "basic",
+          "basic": [
+            { "key": "username", "value": "{{clienteUser}}", "type": "string" },
+            { "key": "password", "value": "{{clientePass}}", "type": "string" }
+          ]
+        },
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"solucao\": \"Tentando resolver o próprio chamado sem ser técnico.\"\n}",
+          "options": { "raw": { "language": "json" } }
+        },
+        "url": "{{baseUrl}}/api/chamados/{{chamadoId}}/resolver",
+        "description": "Regra de negócio: apenas técnicos podem resolver chamados."
+      }
+    },
+    {
+      "name": "7. Resolver chamado (técnico)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status 200', () => pm.response.to.have.status(200));",
+              "const chamado = pm.response.json();",
+              "pm.test('Status RESOLVIDO', () => pm.expect(chamado.status).to.eql('RESOLVIDO'));",
+              "pm.test('Técnico registrado', () => pm.expect(chamado.tecnico.username).to.eql(pm.collectionVariables.get('tecnicoUser')));",
+              "pm.test('Data de resolução registrada', () => pm.expect(chamado.dataResolucao).to.be.a('string'));"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "PUT",
+        "auth": {
+          "type": "basic",
+          "basic": [
+            { "key": "username", "value": "{{tecnicoUser}}", "type": "string" },
+            { "key": "password", "value": "{{tecnicoPass}}", "type": "string" }
+          ]
+        },
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"solucao\": \"Fonte de alimentação substituída. Computador ligou e foi testado com o usuário.\"\n}",
+          "options": { "raw": { "language": "json" } }
+        },
+        "url": "{{baseUrl}}/api/chamados/{{chamadoId}}/resolver",
+        "description": "O técnico registra a solução. O status vira RESOLVIDO e a data de resolução é registrada."
+      }
+    },
+    {
+      "name": "8. Resolver novamente (409)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status 409 Conflict', () => pm.response.to.have.status(409));"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "PUT",
+        "auth": {
+          "type": "basic",
+          "basic": [
+            { "key": "username", "value": "{{tecnicoUser}}", "type": "string" },
+            { "key": "password", "value": "{{tecnicoPass}}", "type": "string" }
+          ]
+        },
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"solucao\": \"Tentando alterar a solução de um chamado já resolvido.\"\n}",
+          "options": { "raw": { "language": "json" } }
+        },
+        "url": "{{baseUrl}}/api/chamados/{{chamadoId}}/resolver",
+        "description": "Regra de negócio: um chamado resolvido não pode ser alterado novamente."
+      }
+    },
+    {
+      "name": "9. Consultar chamado resolvido",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status 200', () => pm.response.to.have.status(200));",
+              "pm.test('Status RESOLVIDO', () => pm.expect(pm.response.json().status).to.eql('RESOLVIDO'));"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "auth": {
+          "type": "basic",
+          "basic": [
+            { "key": "username", "value": "{{clienteUser}}", "type": "string" },
+            { "key": "password", "value": "{{clientePass}}", "type": "string" }
+          ]
+        },
+        "url": "{{baseUrl}}/api/chamados/{{chamadoId}}",
+        "description": "O cliente acompanha o chamado e vê a solução, o técnico e a data de resolução."
+      }
+    },
+    {
+      "name": "10. Listar apenas resolvidos",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status 200', () => pm.response.to.have.status(200));",
+              "pm.test('Todos RESOLVIDOS', () => pm.response.json().forEach(c => pm.expect(c.status).to.eql('RESOLVIDO')));"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "auth": {
+          "type": "basic",
+          "basic": [
+            { "key": "username", "value": "{{clienteUser}}", "type": "string" },
+            { "key": "password", "value": "{{clientePass}}", "type": "string" }
+          ]
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/chamados/usuario/{{usuarioId}}?status=RESOLVIDO",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "chamados", "usuario", "{{usuarioId}}"],
+          "query": [{ "key": "status", "value": "RESOLVIDO" }]
+        },
+        "description": "Filtro opcional por status."
+      }
+    },
+    {
+      "name": "11. Sem autenticação (401)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status 401 Unauthorized', () => pm.response.to.have.status(401));"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "auth": { "type": "noauth" },
+        "url": "{{baseUrl}}/api/chamados/{{chamadoId}}",
+        "description": "Sem credenciais, a API recusa o acesso."
+      }
+    }
+  ]
+}

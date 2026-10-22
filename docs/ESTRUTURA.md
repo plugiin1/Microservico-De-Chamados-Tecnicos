@@ -2,40 +2,39 @@
 
 ## Módulos
 
-O código fica em `src/main/java/com/pfc` e é dividido em três partes:
+O projeto é dividido em três módulos Maven:
 
-| Pacote | O que faz |
+| Módulo | O que faz |
 |---|---|
-| `auth` | Login, cadastro, usuários, perfis, sessões e painel do administrador |
-| `ui` | Nome do sistema, logo e temas visuais |
-| `thindesk` | Exemplo de domínio (chamados e clientes), que pode ser trocado pelo tema do PFC |
+| `auth-core` | Usuários, perfis, senha BCrypt e a busca do usuário no login. Compartilhado pelos dois apps |
+| `thindesk-web` | App web (porta 8080): login, cadastro, painel do administrador e temas |
+| `chamados-service` | Microserviço REST (porta 8081): abertura, consulta e resolução de chamados |
 
-O módulo `auth` não depende do `thindesk`, então pode ser reaproveitado em outro projeto.
+Os dois apps usam o mesmo MongoDB Atlas e a mesma coleção `usuarios`. Por isso, um usuário criado no app web já consegue usar a API.
 
-## Como o login funciona
+## Como a autenticação funciona no microserviço
 
-1. O usuário preenche o login.
-2. O Spring Security busca o usuário no MongoDB (`UsuarioDetailsService`).
-3. A senha digitada é comparada com o hash BCrypt salvo no banco.
-4. Se estiver tudo certo, a sessão é criada e salva na coleção `sessoes` do MongoDB Atlas.
-5. A cada página acessada, o Spring Security verifica se o perfil do usuário tem permissão.
+1. O Postman envia usuário e senha em cada requisição (HTTP Basic).
+2. O Spring Security busca o usuário no MongoDB com o `UsuarioDetailsService` do `auth-core`, o mesmo do login web.
+3. A senha é comparada com o hash BCrypt salvo no banco.
+4. Se o usuário existir e estiver ativo, a requisição segue com o perfil dele (`ADMIN`, `TECNICO` ou `CLIENTE`).
+5. Nenhuma sessão é criada: cada requisição é autenticada de forma independente.
+
+## Ciclo de vida do chamado
+
+1. **Abertura** (`POST /api/chamados`): o usuário informa título e descrição. O sistema registra a solicitação, a data de abertura e o status `ABERTO`.
+2. **Acompanhamento** (`GET /api/chamados/usuario/{id}` e `GET /api/chamados/{id}`): o cliente vê os próprios chamados; técnicos e administradores veem todos.
+3. **Resolução** (`PUT /api/chamados/{id}/resolver`): um técnico registra a solução. O sistema muda o status para `RESOLVIDO` e registra o técnico e a data de resolução.
+4. Depois de resolvido, o chamado **não pode mais ser alterado**.
 
 ## Principais decisões
 
-- **Três perfis (`ADMIN`, `TECNICO`, `CLIENTE`)** definidos no enum `Role`.
-- **O cadastro público sempre cria CLIENTE.** Só o administrador pode promover usuários, pelo painel.
-- **Senhas com BCrypt**, nunca salvas em texto puro.
-- **Formulário separado da entidade** (`CadastroForm`), para o usuário não conseguir enviar campos como o perfil.
-- **Sessões no MongoDB** (Spring Session): o servidor pode reiniciar sem deslogar ninguém, e o admin consegue encerrar a sessão de um usuário.
-- **Regras de acesso em um só lugar**: `SecurityConfig`.
-- **Credenciais fora do código**, no arquivo `.env`.
-- **Layouts reutilizáveis** (`layouts/base.html` e `layouts/auth.html`): as páginas só definem o próprio conteúdo.
-- **Temas com variáveis CSS**: cada tema é um arquivo `theme.css` em `static/themes/`.
+- **Microserviço separado do app web**, para que a API de chamados possa evoluir e ser publicada de forma independente.
+- **Autenticação compartilhada pelo módulo `auth-core`**, em vez de copiar o código de login.
+- **HTTP Basic e sem sessão** na API: simples de usar no Postman e não depende de cookies, por isso não precisa de proteção CSRF.
+- **DTOs de entrada só com os campos permitidos** (`titulo`, `descricao`, `solucao`): o usuário não consegue enviar o status, o solicitante ou as datas.
+- **Solicitante e técnico vêm sempre do usuário autenticado**, nunca do corpo da requisição.
+- **Resolução bloqueada para quem não é técnico** na regra de URL e no `@PreAuthorize`.
+- **Controle de concorrência com `@Version`**: se dois técnicos resolverem o mesmo chamado ao mesmo tempo, só o primeiro é gravado.
+- **Erros padronizados em JSON** (`ApiExceptionHandler`), com o status HTTP adequado: 400, 401, 403, 404 e 409.
 
-## Como adaptar para o PFC
-
-- **Nome e logo:** altere `APP_NOME` no `.env` e substitua `static/images/logo.png`.
-- **Novo tema:** crie `static/themes/<nome>/theme.css` e adicione duas linhas em `application.properties` (veja o README).
-- **Novo domínio:** substitua o pacote `thindesk` e as páginas dele. 
-- **Novas rotas:** adicione-as nas listas de rotas do `SecurityConfig` e o link em `fragments/sidebar.html`.
-- **Novo perfil:** adicione um valor no enum `Role` e ajuste o `SecurityConfig`.

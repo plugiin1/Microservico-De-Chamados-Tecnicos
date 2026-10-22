@@ -1,195 +1,286 @@
-# Sistema de Login Seguro
+# Microserviço de Chamados Técnicos — ThinDesk
 
-Sistema de autenticação e autorização desenvolvido com **Java Spring Boot**, **Spring Security**, **Thymeleaf** e **MongoDB Atlas**. Ele foi construído de forma genérica, para servir de base ao PFC.
+Evolução do **ThinDesk** com a implementação de um **microserviço REST em Java com Spring Boot e MongoDB**, responsável pela **abertura, acompanhamento e resolução de chamados técnicos**.
 
-![Tela inicial do sistema com o tema Verde-Menta, logado como administrador](docs/images/tela-inicial.png)
+O microserviço reaproveita o **sistema de login já existente**: os mesmos usuários, perfis (`ADMIN`, `TECNICO`, `CLIENTE`) e senhas BCrypt, armazenados no MongoDB Atlas.
 
-## Funcionalidades
+## Arquitetura
 
-- Cadastro de usuários com validação de dados e senha criptografada com **BCrypt**
-- Login e logout com **Spring Security**, com proteção **CSRF** em todos os formulários
-- Controle de acesso por **3 perfis**: `ADMIN`, `TECNICO` e `CLIENTE`
-- **Sessões armazenadas no MongoDB Atlas** (Spring Session): a sessão sobrevive a reinícios do servidor e permite rodar várias instâncias
-- **Painel administrativo**: listar usuários, trocar perfil, ativar/desativar e excluir contas, encerrando as sessões do usuário afetado na hora
-- **Layouts reutilizáveis** com Thymeleaf Layout Dialect
-- **Temas visuais configuráveis** (Padrão, Oceano, Verde-Menta, Escuro), escolhidos pelo usuário e salvos em cookie
+
+```
+                    ┌──────────────────────────┐
+  Navegador ──────► │ thindesk-web  :8080      │  login, cadastro, painel admin, temas
+                    └────────────┬─────────────┘
+                                 │ usa
+                         ┌───────▼───────┐
+                         │   auth-core   │  Usuario, Role, BCrypt, UserDetailsService
+                         └───────▲───────┘
+                                 │ usa
+                    ┌────────────┴─────────────┐
+  Postman ────────► │ chamados-service :8081   │  API REST de chamados (HTTP Basic)
+                    └────────────┬─────────────┘
+                                 │
+                         ┌───────▼────────┐
+                         │ MongoDB Atlas  │  usuarios · chamados · sessoes
+                         └────────────────┘
+```
+
+| Módulo | Tipo | Responsabilidade |
+|---|---|---|
+| `auth-core` | biblioteca | Entidade `Usuario`, enum `Role`, `UsuarioRepository`, `UsuarioDetailsService` e `PasswordEncoder` (BCrypt). Compartilhada pelos dois apps |
+| `thindesk-web` | app (porta **8080**) | Interface Thymeleaf: login, cadastro, painel administrativo de usuários e temas |
+| `chamados-service` | app (porta **8081**) | **Microserviço** REST de chamados técnicos |
+
+**Como a autenticação é utilizada:** o `chamados-service` depende do `auth-core` e valida as credenciais enviadas por **HTTP Basic** no mesmo `UsuarioDetailsService` usado pelo login web. Um usuário criado ou promovido no ThinDesk web passa a valer na API na hora.
+
+## Endpoints
+
+Todos exigem autenticação **HTTP Basic** (usuário e senha do ThinDesk).
+
+| Método | Rota | Descrição | Quem pode |
+|---|---|---|---|
+| `POST` | `/api/chamados` | Abrir chamado | Qualquer usuário autenticado |
+| `GET` | `/api/chamados/usuario/{id}` | Listar chamados de um usuário (filtro opcional `?status=ABERTO\|RESOLVIDO`) | O próprio usuário; TECNICO e ADMIN veem de qualquer um |
+| `GET` | `/api/chamados/{id}` | Consultar detalhes e status de um chamado | O solicitante; TECNICO e ADMIN |
+| `PUT` | `/api/chamados/{id}/resolver` | Registrar a solução e resolver o chamado | **TECNICO** e ADMIN |
+| `GET` | `/api/me` | Dados do usuário autenticado (útil para descobrir o próprio `id`) | Qualquer usuário autenticado |
+
+### Abrir chamado
+
+```http
+POST /api/chamados
+Content-Type: application/json
+
+{
+  "titulo": "Computador não liga",
+  "descricao": "O computador da recepção não liga desde hoje cedo."
+}
+```
+
+Resposta **201 Created** (com o cabeçalho `Location: /api/chamados/{id}`):
+
+```json
+{
+  "id": "6ada41f30257a0431c6e399d",
+  "titulo": "Computador não liga",
+  "descricao": "O computador da recepção não liga desde hoje cedo.",
+  "status": "ABERTO",
+  "solicitante": { "id": "6ac6bdfdb9e8476c08645969", "username": "teste_cliente" },
+  "dataAbertura": "2026-10-22T17:05:23.512Z"
+}
+```
+
+### Resolver chamado
+
+```http
+PUT /api/chamados/{id}/resolver
+Content-Type: application/json
+
+{
+  "solucao": "Fonte de alimentação substituída. Computador testado com o usuário."
+}
+```
+
+Resposta **200 OK**:
+
+```json
+{
+  "id": "6ada41f30257a0431c6e399d",
+  "titulo": "Computador não liga",
+  "descricao": "O computador da recepção não liga desde hoje cedo.",
+  "status": "RESOLVIDO",
+  "solicitante": { "id": "6ac6bdfdb9e8476c08645969", "username": "teste_cliente" },
+  "dataAbertura": "2026-10-22T17:05:23.512Z",
+  "solucao": "Fonte de alimentação substituída. Computador testado com o usuário.",
+  "tecnico": { "id": "6ada3f6d8dce68740ba105f7", "username": "tecnico1" },
+  "dataResolucao": "2026-10-22T17:06:10.104Z"
+}
+```
+
+### Formato de erro
+
+Todos os erros retornam o mesmo formato JSON:
+
+```json
+{
+  "timestamp": "2026-10-22T17:06:12.881Z",
+  "status": 409,
+  "erro": "Conflict",
+  "mensagem": "Este chamado já foi resolvido e não pode ser alterado.",
+  "caminho": "/api/chamados/6ada41f30257a0431c6e399d/resolver"
+}
+```
+
+Em erros de validação, o campo `campos` traz a mensagem de cada campo inválido.
+
+## Regras de negócio
+
+| Regra | Resposta |
+|---|---|
+| Solicitante, data de abertura e status `ABERTO` são registrados **automaticamente** pelo sistema. Campos como `status` ou `solicitanteId` enviados no corpo são ignorados | — |
+| Título obrigatório, de 5 a 120 caracteres; descrição obrigatória, de 10 a 2000 | `400` |
+| Solução obrigatória, de 10 a 2000 caracteres | `400` |
+| Apenas **TECNICO** (ou ADMIN) pode resolver chamados | `403` |
+| O técnico e a data de resolução são registrados automaticamente a partir do usuário autenticado | — |
+| **Chamado resolvido não pode ser alterado novamente** | `409` |
+| Dois técnicos resolvendo o mesmo chamado ao mesmo tempo: só o primeiro é gravado (controle de concorrência com `@Version`) | `409` |
+| CLIENTE só lista e consulta os **próprios** chamados | `403` |
+| Chamado ou usuário inexistente | `404` |
+| Requisição sem credenciais ou com senha errada | `401` |
 
 ## Tecnologias
 
 | Tecnologia | Versão |
 |---|---|
 | Java | 21+ |
-| Spring Boot | 3.5.6 |
-| Spring Security | 6.5 (gerenciado pelo Boot) |
-| Spring Data MongoDB / Spring Session MongoDB | gerenciados pelo Boot |
-| Thymeleaf + Layout Dialect + Extras Spring Security | 3.1 / 3.4.0 / 6 |
-| Bootstrap / Bootstrap Icons | 5.3.3 / 1.11.3 (via CDN) |
+| Spring Boot (Web, Security, Data MongoDB, Validation) | 3.5.6 |
+| Spring Session MongoDB (app web) | gerenciado pelo Boot |
+| Thymeleaf | 3.1 / 3.4.0 |
 | Lombok | gerenciado pelo Boot |
-| MongoDB Atlas | cluster (gratuito) |
+| MongoDB Atlas | cluster M0 (gratuito) |
 
 ## Pré-requisitos
 
-- **JDK 21 ou superior** instalado (`java -version`)
+- **JDK 21 ou superior** (`java -version`)
 - Uma conta no **[MongoDB Atlas](https://www.mongodb.com/cloud/atlas)**
+- **[Postman](https://www.postman.com/downloads/)** (ou Insomnia) para testar a API
 
-O Maven **não** precisa estar instalado, porque o projeto inclui o Maven Wrapper (`mvnw` / `mvnw.cmd`).
+O Maven não precisa estar instalado: o projeto inclui o Maven Wrapper (`mvnw` / `mvnw.cmd`).
 
-## Configurando o MongoDB Atlas
+## Configuração
 
-1. **Crie um cluster**: no Atlas, clique em *Create* e escolha o plano **M0 (Free)**.
-2. **Crie um usuário de banco**: em *Security → Database Access*, clique em *Add New Database User*. Defina usuário e senha. O mais seguro é dar a ele apenas o papel **readWrite** no banco da aplicação (ex.: `thindesk`).
-3. **Libere seu IP**: em *Security → Network Access*, clique em *Add IP Address* e depois em *Add Current IP Address*. Só os IPs dessa lista conseguem se conectar.
-4. **Copie a string de conexão**: no cluster, clique em *Connect → Drivers → Java* e copie a URI:
-   ```
-   mongodb+srv://<usuario>:<db_password>@<cluster>.xxxxx.mongodb.net/?appName=<Cluster>
-   ```
-5. Troque `<db_password>` pela senha do usuário, **sem** os sinais `<` e `>`. Caracteres especiais na senha precisam ser codificados (`@` → `%40`, `:` → `%3A`, `/` → `%2F`, `#` → `%23`).
+### MongoDB Atlas
 
-O banco e as coleções são criados automaticamente na primeira execução. Não é preciso criar nada manualmente.
+1. Crie um cluster **M0 (Free)**.
+2. Em *Security → Database Access*, crie um usuário de banco (de preferência com papel `readWrite` no banco `thindesk`).
+3. Em *Security → Network Access*, libere o seu IP.
+4. Em *Connect → Drivers → Java*, copie a string de conexão e troque `<db_password>` pela senha, sem os `<` `>`.
 
-## Configurando o ambiente
+O banco e as coleções são criados automaticamente na primeira execução.
 
-As credenciais **nunca** ficam no código. A aplicação lê as configurações de variáveis de ambiente ou de um arquivo **`.env`** na raiz do projeto. Esse arquivo está no `.gitignore` e não vai para o GitHub.
+### Arquivo `.env`
 
-1. Copie o modelo:
-   ```bash
-   # Windows (PowerShell)
-   Copy-Item .env.example .env
-   # Linux / macOS
-   cp .env.example .env
-   ```
-2. Edite o `.env`:
+As credenciais **não ficam no código**. Os dois apps leem um arquivo `.env` na **raiz do projeto** (ignorado pelo Git):
+
+```bash
+# Windows (PowerShell)
+Copy-Item .env.example .env
+# Linux / macOS
+cp .env.example .env
+```
 
 | Variável | Obrigatória | Descrição | Padrão |
 |---|:-:|---|---|
 | `MONGODB_URI` | ✅ | String de conexão do Atlas | — |
 | `MONGODB_DATABASE` | | Nome do banco | `thindesk` |
-| `ADMIN_USERNAME` | | Usuário do administrador inicial | `admin` |
-| `ADMIN_EMAIL` | | E-mail do administrador inicial | `admin@thindesk.local` |
+| `ADMIN_USERNAME` / `ADMIN_EMAIL` | | Administrador inicial | `admin` / `admin@thindesk.local` |
 | `ADMIN_PASSWORD` | ✅ | Senha do administrador inicial | — |
-| `SESSION_TIMEOUT` | | Tempo de inatividade até a sessão expirar | `30m` |
-| `COOKIE_SECURE` | | `true` para enviar o cookie de sessão só por HTTPS (use em produção) | `false` |
-| `APP_NOME` | | Nome exibido no sistema | `Thindesk` |
-| `APP_TEMA` | | Tema padrão (`padrao`, `oceano`, `menta`, `escuro`) | `padrao` |
+| `CHAMADOS_PORT` | | Porta do microserviço | `8081` |
+| `SESSION_TIMEOUT` / `COOKIE_SECURE` | | Sessão do app web | `30m` / `false` |
+| `APP_NOME` / `APP_TEMA` | | Nome e tema do app web | `Thindesk` / `padrao` |
 
-¹ Obrigatória apenas na primeira execução, quando ainda não existe nenhum administrador no banco. Se não for definida, o administrador não é criado e um aviso aparece no log.
-
-Também é possível definir essas variáveis direto no sistema operacional ou na configuração de execução da IDE, em vez de usar o `.env`.
+¹ Usada apenas na primeira execução do `thindesk-web`, para criar o administrador.
 
 ## Executando
 
-```bash
-# Windows
-.\mvnw.cmd spring-boot:run
+Rode os dois apps (cada um em um terminal):
 
-# Linux / macOS
-./mvnw spring-boot:run
+```bash
+# App web (login, cadastro, painel admin) → http://localhost:8080
+.\mvnw.cmd -pl thindesk-web -am compile spring-boot:run
+
+# Microserviço de chamados → http://localhost:8081
+.\mvnw.cmd -pl chamados-service -am compile spring-boot:run
 ```
 
-Acesse **http://localhost:8080** e entre com o `ADMIN_USERNAME` / `ADMIN_PASSWORD` definidos no `.env`.
+No Linux/macOS, use `./mvnw` no lugar de `.\mvnw.cmd`.
 
-Para gerar o `.jar` e executar:
+**Pela IDE (IntelliJ):** recarregue o Maven e execute as classes `com.pfc.ThindeskApplication` (módulo `thindesk-web`) e `com.pfc.ChamadosServiceApplication` (módulo `chamados-service`).
+
+**Gerando os jars:**
 
 ```bash
 .\mvnw.cmd clean package
-java -jar target/thindesk-1.0-alpha.jar
+java -jar thindesk-web/target/thindesk-web-1.0-alpha.jar
+java -jar chamados-service/target/chamados-service-1.0-alpha.jar
 ```
 
-Execute o `java -jar` a partir da pasta onde está o `.env`, porque ele é procurado no diretório atual.
+## Testando com o Postman
 
-Também dá para rodar pela IDE (IntelliJ, NetBeans, VS Code), executando a classe `com.pfc.ThindeskApplication`.
+A coleção pronta está em **[`docs/postman/ThinDesk-Chamados.postman_collection.json`](docs/postman/ThinDesk-Chamados.postman_collection.json)**.
 
-## Perfis
+1. No Postman, clique em **Import** e selecione o arquivo.
+2. Garanta que existam os usuários usados pela coleção (ou altere as variáveis da coleção):
+   - `teste_cliente` / `Senha1234`: cadastre-se em http://localhost:8080/cadastro (o cadastro cria um CLIENTE).
+   - `tecnico1` / `Tecnico123`: cadastre-se e, como `admin`, promova a **Técnico** em http://localhost:8080/admin/usuarios.
+3. Execute as requisições **na ordem numerada** (1 → 11). Elas guardam o `id` do usuário e do chamado criado nas variáveis `usuarioId` e `chamadoId`, e cada uma tem testes automáticos que aparecem na aba **Test Results**.
 
-- Todo usuário que se cadastra pela tela pública recebe o perfil **CLIENTE**. O perfil nunca vem do formulário.
-- O **ADMIN** promove usuários a TECNICO ou ADMIN pelo painel `/admin/usuarios`.
-- O primeiro ADMIN é criado automaticamente a partir do `.env`.
-- O menu lateral mostra apenas os itens liberados para o perfil logado.
+| # | Requisição | Esperado |
+|---|---|---|
+| 1 | Quem sou eu (cliente) | `200` + salva `usuarioId` |
+| 2 | Abrir chamado | `201` + status `ABERTO` + salva `chamadoId` |
+| 3 | Abrir chamado inválido | `400` |
+| 4 | Listar chamados do usuário | `200` |
+| 5 | Consultar chamado | `200` |
+| 6 | Resolver como cliente | `403` |
+| 7 | Resolver chamado (técnico) | `200` + status `RESOLVIDO` |
+| 8 | Resolver novamente | `409` |
+| 9 | Consultar chamado resolvido | `200` |
+| 10 | Listar apenas resolvidos | `200` |
+| 11 | Sem autenticação | `401` |
 
-## Integração com o MongoDB Atlas
+A coleção também roda pela linha de comando com o Newman:
 
-| Coleção | Conteúdo |
-|---|---|
-| `usuarios` | Usuários (nome, username e e-mail com **índice único**, hash BCrypt da senha, perfil, ativo, data de cadastro) |
-| `sessoes` | Sessões HTTP do Spring Session. Um **índice TTL** remove automaticamente as sessões expiradas |
-| `chamados`, `clientes`, `horariosAtendimento` | Domínio de exemplo (Thindesk) |
+```bash
+npx newman run docs/postman/ThinDesk-Chamados.postman_collection.json
+```
 
-**Conexão segura:**
-- O protocolo `mongodb+srv://` usa **TLS** por padrão. O Atlas não aceita conexões sem criptografia.
-- O usuário e a senha ficam apenas no `.env` ou em variáveis de ambiente, nunca no repositório.
-- Só os IPs cadastrados no *Network Access* do Atlas conseguem se conectar.
-- O recomendado é um usuário de banco com o mínimo de privilégios necessário (`readWrite` no banco da aplicação).
+## Persistência no MongoDB
 
-**Como a aplicação se conecta:**
-- `spring.config.import=optional:file:.env[.properties]` carrega o `.env`.
-- `spring.data.mongodb.uri=${MONGODB_URI}` passa a URI para o driver oficial do MongoDB.
-- `spring.data.mongodb.auto-index-creation=true` cria os índices únicos declarados com `@Indexed`.
-- O `spring-session-data-mongodb` é configurado automaticamente pelo Spring Boot e grava as sessões na coleção `sessoes`.
+Os chamados ficam na coleção **`chamados`** do banco `thindesk`:
 
-## Medidas de segurança
+```json
+{
+  "_id": "ObjectId('6ada41f30257a0431c6e399d')",
+  "titulo": "Computador não liga",
+  "descricao": "O computador da recepção não liga desde hoje cedo.",
+  "status": "RESOLVIDO",
+  "solicitanteId": "6ac6bdfdb9e8476c08645969",
+  "solicitanteUsername": "teste_cliente",
+  "dataAbertura": "ISODate('2026-10-22T17:05:23.512Z')",
+  "solucao": "Fonte de alimentação substituída. Computador testado com o usuário.",
+  "tecnicoId": "6ada3f6d8dce68740ba105f7",
+  "tecnicoUsername": "tecnico1",
+  "dataResolucao": "ISODate('2026-10-22T17:06:10.104Z')",
+  "versao": 1
+}
+```
 
-| Medida | Onde |
-|---|---|
-| Hash de senha com **BCrypt** (custo 12) | `PasswordConfig` |
-| Validação de dados (tamanho, formato, e-mail, força da senha, confirmação) | `CadastroForm` |
-| Username e e-mail únicos (verificação + índice único no banco) | `UsuarioService`, `Usuario` |
-| Proteção **CSRF** em todos os formulários | `SecurityConfig` (padrão do Spring Security) |
-| Logout só por POST, invalidando a sessão e apagando os cookies | `SecurityConfig` |
-| Troca do ID da sessão no login (proteção contra *session fixation*) | `SecurityConfig` |
-| Cookie de sessão `HttpOnly` e `SameSite=Lax` (e `Secure` em produção) | `application.properties` |
-| Autorização por URL **e** por método (`@PreAuthorize`) no painel admin | `SecurityConfig`, `AdminUsuarioController` |
-| Perfil nunca aceito do formulário público | `UsuarioService` |
-| Usuário desativado não consegue logar e tem as sessões encerradas | `UsuarioDetailsService`, `SessaoService` |
-| Admin não pode rebaixar, desativar ou excluir a si mesmo, nem deixar o sistema sem admin | `AdminUsuarioService` |
-| Mensagem de erro de login genérica (não revela se o usuário existe) | `login.html` |
-| Proteção contra *open redirect* na troca de tema | `TemaController` |
-| Credenciais fora do código, em `.env` (ignorado pelo Git) | `.env.example`, `.gitignore` |
-
-## Temas e personalização
-
-- **Trocar o nome e a logo**: altere `APP_NOME` no `.env` e substitua `src/main/resources/static/images/logo.png`.
-- **Trocar o tema padrão**: altere `APP_TEMA`.
-- **Criar um tema novo** (ex.: `roxo`):
-  1. Crie `src/main/resources/static/themes/roxo/theme.css`, copiando um tema existente e mudando as cores.
-  2. Adicione no `application.properties`:
-     ```properties
-     app.ui.temas.roxo.descricao=Roxo
-     app.ui.temas.roxo.modo=light
-     ```
-  O tema aparece no seletor do menu sem alterar Java nem HTML. Use `modo=dark` para ativar o modo escuro do Bootstrap.
+- `solicitanteId` e `tecnicoId` referenciam o `_id` da coleção `usuarios`, a mesma do sistema de login.
+- Há um índice em `solicitanteId` para a listagem por usuário.
+- `versao` é o controle de concorrência otimista (`@Version`).
 
 ## Estrutura do projeto
 
 ```
-src/main/java/com/pfc
-├── ThindeskApplication.java      # classe principal
-├── MongoInitConfig.java          # cria as coleções na inicialização
-├── auth/                         # módulo de autenticação (genérico, reutilizável)
-│   ├── config/                   # SecurityConfig, PasswordConfig, AdminInitializer
-│   ├── controller/               # login, cadastro, painel admin
-│   ├── dto/                      # CadastroForm (validação)
-│   ├── entity/                   # Usuario, Role
-│   ├── exception/                # exceções de regra de negócio
-│   ├── repository/               # UsuarioRepository
-│   └── service/                  # UsuarioService, UsuarioDetailsService, AdminUsuarioService, SessaoService
-├── ui/                           # módulo de interface: nome, logo e temas
-└── thindesk/                     # domínio de exemplo (adaptações futuras)
-
-src/main/resources
-├── application.properties
-├── static/
-│   ├── css/style.css             # estilos base (variáveis CSS)
-│   ├── js/script.js
-│   ├── images/logo.png
-│   └── themes/<tema>/theme.css   # um arquivo por tema
-└── templates/
-    ├── layouts/base.html         # layout das páginas internas (menu lateral)
-    ├── layouts/auth.html         # layout de login, cadastro e erros
-    ├── fragments/sidebar.html
-    ├── auth/                     # login, cadastro, acesso negado
-    ├── admin/                    # painel de usuários
-    └── ...                       # páginas do domínio
+├── pom.xml                         # pom pai (módulos e versões)
+├── auth-core/                      # autenticação compartilhada
+│   └── com/pfc/auth/{entity,repository,service,config}
+├── thindesk-web/                   # app web (porta 8080)
+│   └── com/pfc/{auth,ui,thindesk}
+├── chamados-service/               # microserviço (porta 8081)
+│   └── com/pfc/chamados/
+│       ├── config/                 # SecurityConfig (HTTP Basic, stateless)
+│       ├── controller/             # ChamadoController, UsuarioController
+│       ├── dto/                    # requisições, respostas e formato de erro
+│       ├── entity/                 # Chamado, StatusChamado
+│       ├── exception/              # exceções e ApiExceptionHandler
+│       ├── repository/             # ChamadoRepository
+│       └── service/                # ChamadoService (regras de negócio)
+└── docs/
+    ├── ESTRUTURA.md                # estrutura e decisões de design
+    ├── ROTEIRO-VIDEO.md            # roteiro da demonstração em vídeo
+    └── postman/                    # coleção do Postman
 ```
 
-A estrutura do sistema, as principais decisões de design e como adaptá-lo ao PFC estão em **[docs/ESTRUTURA.md](docs/ESTRUTURA.md)**.
-
+Mais detalhes sobre a estrutura e as decisões de design em **[docs/ESTRUTURA.md](docs/ESTRUTURA.md)**.
