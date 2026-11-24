@@ -2,6 +2,8 @@
 
 Evolução do **ThinDesk** com a implementação de um **microserviço REST em Java com Spring Boot e MongoDB**, responsável pela **abertura, acompanhamento e resolução de chamados técnicos**.
 
+**Aplicação publicada:** https://thindesk-web.onrender.com — entre com `demo` / `Demo@2026` ou crie sua conta. Detalhes em [Deploy](#deploy).
+
 O microserviço reaproveita o **sistema de login já existente**: os mesmos usuários, perfis (`ADMIN`, `TECNICO`, `CLIENTE`) e senhas BCrypt, armazenados no MongoDB Atlas.
 
 ## Arquitetura
@@ -172,6 +174,60 @@ O detalhamento de cada versão fica no **[CHANGELOG.md](CHANGELOG.md)**, no form
 [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/). As mensagens de commit seguem o padrão
 [Conventional Commits](https://www.conventionalcommits.org/pt-br/) (`feat`, `fix`, `docs`,
 `refactor`), o que torna direto decidir se a próxima versão muda a parte MENOR ou a de CORREÇÃO.
+
+## Deploy
+
+A aplicação está publicada no **[Render](https://render.com)**, com os dois serviços rodando em
+containers Docker separados e apontando para o mesmo MongoDB Atlas:
+
+| Serviço | URL | Observação |
+|---|---|---|
+| App web (login e dashboard) | **https://thindesk-web.onrender.com** | é por aqui que se acessa o sistema |
+| Microserviço de chamados | **https://thindesk-chamados-service.onrender.com** | API REST; `GET /api/info` responde sem autenticação |
+
+### Credenciais de exemplo
+
+Qualquer pessoa pode entrar com o usuário de demonstração abaixo, ou criar a própria conta em
+**/cadastro** (o cadastro cria um usuário com perfil CLIENTE).
+
+| Perfil | Usuário | Senha | O que vê |
+|---|---|---|---|
+| Cliente | `demo` | `Demo@2026` | dashboard e chamados próprios; pode abrir chamados |
+| Técnico | `tecnico.demo` | `Tecnico@2026` | dashboard de todos os chamados; pode resolver |
+
+> **Primeiro acesso demora.** No plano gratuito do Render os serviços hibernam após 15 minutos sem
+> uso, e o primeiro acesso leva cerca de um minuto para acordar o container. Como o app web conversa
+> com o microserviço, pode ser preciso esperar as duas partidas: se o dashboard demorar, basta
+> recarregar a página.
+
+### Como o deploy está montado
+
+Os arquivos de deploy ficam na raiz do repositório:
+
+| Arquivo | Para que serve |
+|---|---|
+| `Dockerfile.web` | Build em dois estágios do `thindesk-web` (Maven + JDK 21 → imagem só com o JRE) |
+| `Dockerfile.chamados` | O mesmo para o `chamados-service` |
+| `render.yaml` | *Blueprint* do Render: declara os dois serviços, o plano, o health check e as variáveis de ambiente |
+| `.dockerignore` | Impede que `.env`, `target/` e `.git` entrem na imagem |
+
+Em produção, a porta vem da variável `PORT` definida pela plataforma (`server.port=${PORT:8080}`),
+o cookie de sessão é marcado como `secure` e o cache do Thymeleaf fica ligado.
+
+### Reproduzindo o deploy
+
+1. No **MongoDB Atlas**, em *Network Access*, libere `0.0.0.0/0` — o Render não tem IP fixo no plano gratuito.
+2. No Render, clique em **New → Blueprint** e aponte para este repositório. O `render.yaml` cria os dois serviços.
+3. Preencha as variáveis marcadas como secretas em cada serviço:
+
+   | Serviço | Variáveis |
+   |---|---|
+   | `thindesk-chamados-service` | `MONGODB_URI` |
+   | `thindesk-web` | `MONGODB_URI`, `ADMIN_USERNAME`, `ADMIN_EMAIL`, `ADMIN_PASSWORD`, `CHAMADOS_API_URL` |
+
+4. Em `CHAMADOS_API_URL`, informe a URL pública do microserviço já publicado
+   (`https://thindesk-chamados-service.onrender.com`) e aguarde o novo deploy do app web.
+5. Confirme que `GET /api/info` do microserviço responde com a versão, e faça login no app web.
 
 ## Tecnologias
 

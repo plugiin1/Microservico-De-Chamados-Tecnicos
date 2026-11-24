@@ -1,0 +1,14 @@
+.git
+.github
+.idea
+.mvn
+docs
+target
+*/target
+.env
+.env.*
+!.env.example
+*.md
+mvnw
+mvnw.cmd
+customs.json

@@ -1,0 +1,15 @@
+FROM maven:3.9-eclipse-temurin-21 AS build
+WORKDIR /build
+COPY pom.xml ./
+COPY auth-core/pom.xml auth-core/
+COPY thindesk-web/pom.xml thindesk-web/
+COPY chamados-service/pom.xml chamados-service/
+COPY auth-core/src auth-core/src
+COPY chamados-service/src chamados-service/src
+RUN mvn -B -pl chamados-service -am package -DskipTests
+
+FROM eclipse-temurin:21-jre
+WORKDIR /app
+COPY --from=build /build/chamados-service/target/chamados-service-*.jar app.jar
+EXPOSE 8081
+ENTRYPOINT ["java", "-XX:MaxRAMPercentage=75", "-jar", "app.jar"]
