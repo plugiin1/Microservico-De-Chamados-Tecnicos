@@ -15,6 +15,9 @@
         <div th:if="${param.logout}" class="alert alert-success" role="alert">
             Você saiu do sistema.
         </div>
+        <div th:if="${param.expirado}" class="alert alert-warning" role="alert">
+            Sua sessão expirou. Faça login novamente.
+        </div>
         <div th:if="${param.cadastrado}" class="alert alert-success" role="alert">
             Cadastro realizado. Faça login para continuar.
         </div>

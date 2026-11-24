@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+      layout:decorate="~{layouts/base}">
+<head>
+    <title>Abrir chamado</title>
+</head>
+<body>
+<div layout:fragment="content" class="container mt-4" style="max-width: 720px;">
+
+    <h2 class="mb-4">Abrir chamado</h2>
+
+    <div class="card border-0 shadow-sm">
+        <div class="card-body">
+            <form th:action="@{/chamados}" th:object="${form}" method="post" novalidate>
+                <div class="mb-3">
+                    <label for="titulo" class="form-label">Título</label>
+                    <input type="text" id="titulo" th:field="*{titulo}" class="form-control"
+                           th:classappend="${#fields.hasErrors('titulo')} ? 'is-invalid'"
+                           placeholder="Resumo do problema">
+                    <div class="invalid-feedback" th:if="${#fields.hasErrors('titulo')}"
+                         th:errors="*{titulo}">erro</div>
+                </div>
+
+                <div class="mb-3">
+                    <label for="descricao" class="form-label">Descrição</label>
+                    <textarea id="descricao" th:field="*{descricao}" class="form-control" rows="6"
+                              th:classappend="${#fields.hasErrors('descricao')} ? 'is-invalid'"
+                              placeholder="Explique o que está acontecendo, desde quando e o que já foi tentado"></textarea>
+                    <div class="invalid-feedback" th:if="${#fields.hasErrors('descricao')}"
+                         th:errors="*{descricao}">erro</div>
+                </div>
+
+                <div class="d-flex gap-2">
+                    <button type="submit" class="btn btn-primary">Abrir chamado</button>
+                    <a th:href="@{/chamados}" class="btn btn-outline-secondary">Cancelar</a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+</body>
+</html>

@@ -1,6 +1,8 @@
 package com.pfc.auth.config;
 
 import com.pfc.auth.entity.Role;
+import com.pfc.thindesk.chamados.client.GuardaCredenciaisHandler;
+import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
@@ -11,11 +13,14 @@ import org.springframework.security.web.SecurityFilterChain;
 @Configuration
 @EnableWebSecurity
 @EnableMethodSecurity
+@RequiredArgsConstructor
 public class SecurityConfig {
+
+    private final GuardaCredenciaisHandler guardaCredenciaisHandler;
 
     // Acessíveis sem login: telas de autenticação, página de erro e arquivos estáticos.
     private static final String[] ROTAS_PUBLICAS = {
-        "/login", "/cadastro", "/acesso-negado", "/error",
+        "/login", "/cadastro", "/acesso-negado", "/error", "/sessao-expirada",
         "/css/**", "/js/**", "/images/**", "/themes/**", "/favicon.ico"
     };
 
@@ -44,7 +49,7 @@ public class SecurityConfig {
             )
             .formLogin(form -> form
                 .loginPage("/login")
-                .defaultSuccessUrl("/", true)
+                .successHandler(guardaCredenciaisHandler)
                 .failureUrl("/login?error")
                 .permitAll()
             )

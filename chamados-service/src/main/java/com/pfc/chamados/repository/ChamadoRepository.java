@@ -10,4 +10,8 @@ public interface ChamadoRepository extends MongoRepository<Chamado, String> {
     List<Chamado> findBySolicitanteIdOrderByDataAberturaDesc(String solicitanteId);
 
     List<Chamado> findBySolicitanteIdAndStatusOrderByDataAberturaDesc(String solicitanteId, StatusChamado status);
+
+    List<Chamado> findAllByOrderByDataAberturaDesc();
+
+    List<Chamado> findByStatusOrderByDataAberturaDesc(StatusChamado status);
 }

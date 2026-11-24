@@ -41,6 +41,16 @@ public class ChamadoController {
         return ResponseEntity.created(location).body(ChamadoResposta.de(chamado));
     }
 
+    @GetMapping
+    @PreAuthorize("hasAnyRole('TECNICO', 'ADMIN')")
+    public List<ChamadoResposta> listarTodos(@RequestParam(required = false) StatusChamado status,
+                                             Authentication authentication) {
+        return chamadoService.listarTodos(status, authentication.getName())
+                .stream()
+                .map(ChamadoResposta::de)
+                .toList();
+    }
+
     @GetMapping("/usuario/{usuarioId}")
     public List<ChamadoResposta> listarPorUsuario(@PathVariable String usuarioId,
                                                   @RequestParam(required = false) StatusChamado status,

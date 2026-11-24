@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+      layout:decorate="~{layouts/base}">
+<head>
+    <title>Chamado</title>
+</head>
+<body>
+<div layout:fragment="content" class="container mt-4" style="max-width: 860px;">
+
+    <div class="alert alert-success" th:if="${sucesso}" th:text="${sucesso}">ok</div>
+
+    <div class="d-flex flex-wrap justify-content-between align-items-start mb-3 gap-2">
+        <div>
+            <h2 class="mb-1" th:text="${chamado.titulo}">Título</h2>
+            <span class="badge"
+                  th:classappend="${chamado.resolvido} ? 'text-bg-success' : 'text-bg-warning'"
+                  th:text="${chamado.status}">STATUS</span>
+        </div>
+        <a th:href="@{/chamados}" class="btn btn-outline-secondary btn-sm">
+            <i class="bi bi-arrow-left"></i> Voltar
+        </a>
+    </div>
+
+    <div class="card border-0 shadow-sm mb-3">
+        <div class="card-body">
+            <div class="row g-3 mb-3">
+                <div class="col-6 col-md-3">
+                    <div class="small text-body-secondary text-uppercase">Solicitante</div>
+                    <div th:text="${chamado.solicitante.username}">usuário</div>
+                </div>
+                <div class="col-6 col-md-3">
+                    <div class="small text-body-secondary text-uppercase">Abertura</div>
+                    <div th:text="${#temporals.format(chamado.dataAbertura, 'dd/MM/yyyy HH:mm')}">—</div>
+                </div>
+                <div class="col-6 col-md-3">
+                    <div class="small text-body-secondary text-uppercase">Técnico</div>
+                    <div th:text="${chamado.tecnico != null} ? ${chamado.tecnico.username} : '—'">—</div>
+                </div>
+                <div class="col-6 col-md-3">
+                    <div class="small text-body-secondary text-uppercase">Resolução</div>
+                    <div th:text="${chamado.dataResolucao != null}
+                                  ? ${#temporals.format(chamado.dataResolucao, 'dd/MM/yyyy HH:mm')} : '—'">—</div>
+                </div>
+            </div>
+
+            <div class="small text-body-secondary text-uppercase">Descrição</div>
+            <p class="mb-0" style="white-space: pre-wrap;" th:text="${chamado.descricao}">descrição</p>
+        </div>
+    </div>
+
+    <div class="card border-0 shadow-sm mb-3" th:if="${chamado.resolvido}">
+        <div class="card-body">
+            <div class="small text-body-secondary text-uppercase">Solução aplicada</div>
+            <p class="mb-0" style="white-space: pre-wrap;" th:text="${chamado.solucao}">solução</p>
+        </div>
+    </div>
+
+    <div class="card border-0 shadow-sm" th:if="${equipe and !chamado.resolvido}">
+        <div class="card-body">
+            <h5 class="card-title">Resolver chamado</h5>
+            <form th:action="@{'/chamados/' + ${chamado.id} + '/resolver'}" th:object="${form}"
+                  method="post" novalidate>
+                <div class="mb-3">
+                    <label for="solucao" class="form-label">Solução</label>
+                    <textarea id="solucao" th:field="*{solucao}" class="form-control" rows="4"
+                              th:classappend="${#fields.hasErrors('solucao')} ? 'is-invalid'"
+                              placeholder="Descreva o que foi feito para resolver o chamado"></textarea>
+                    <div class="invalid-feedback" th:if="${#fields.hasErrors('solucao')}"
+                         th:errors="*{solucao}">erro</div>
+                </div>
+                <button type="submit" class="btn btn-success">
+                    <i class="bi bi-check-lg"></i> Marcar como resolvido
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <div class="alert alert-secondary mt-3" th:if="${!equipe and !chamado.resolvido}">
+        Seu chamado está na fila. Um técnico registrará a solução por aqui.
+    </div>
+</div>
+</body>
+</html>

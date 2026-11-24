@@ -1,0 +1,20 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+      layout:decorate="~{layouts/base}">
+<head>
+    <title>Erro</title>
+</head>
+<body>
+<div layout:fragment="content" class="container mt-5" style="max-width: 640px;">
+    <div class="card border-0 shadow-sm">
+        <div class="card-body text-center py-5">
+            <i class="bi bi-exclamation-triangle display-4 text-warning"></i>
+            <h3 class="mt-3" th:text="'Erro ' + ${status}">Erro</h3>
+            <p class="text-body-secondary" th:text="${mensagem}">mensagem</p>
+            <a th:href="@{/dashboard}" class="btn btn-primary">Voltar ao dashboard</a>
+        </div>
+    </div>
+</div>
+</body>
+</html>

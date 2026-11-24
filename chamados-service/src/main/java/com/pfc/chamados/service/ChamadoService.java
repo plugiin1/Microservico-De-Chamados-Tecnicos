@@ -52,6 +52,16 @@ public class ChamadoService {
                 : chamadoRepository.findBySolicitanteIdAndStatusOrderByDataAberturaDesc(usuarioId, status);
     }
 
+    public List<Chamado> listarTodos(StatusChamado status, String username) {
+        Usuario logado = buscarUsuarioLogado(username);
+        if (!isEquipe(logado)) {
+            throw new AccessDeniedException("Apenas técnicos e administradores podem listar todos os chamados.");
+        }
+        return status == null
+                ? chamadoRepository.findAllByOrderByDataAberturaDesc()
+                : chamadoRepository.findByStatusOrderByDataAberturaDesc(status);
+    }
+
     public Chamado buscar(String id, String username) {
         Usuario logado = buscarUsuarioLogado(username);
         Chamado chamado = chamadoRepository.findById(id)

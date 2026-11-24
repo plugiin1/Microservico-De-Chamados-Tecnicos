@@ -16,7 +16,19 @@
                 </div>
                 <ul class="nav flex-column">
                     <li class="nav-item">
-                        <a class="nav-link" th:href="@{/}" aria-current="page">Início</a>
+                        <a class="nav-link" th:href="@{/dashboard}" aria-current="page">
+                            <i class="bi bi-speedometer2"></i> <span class="d-none d-md-inline">Dashboard</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" th:href="@{/chamados}">
+                            <i class="bi bi-ticket-detailed"></i> <span class="d-none d-md-inline">Chamados</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" th:href="@{/chamados/novo}">
+                            <i class="bi bi-plus-circle"></i> <span class="d-none d-md-inline">Abrir chamado</span>
+                        </a>
                     </li>
                     <li class="nav-item" sec:authorize="hasAnyRole('ADMIN', 'TECNICO')">
                         <a class="nav-link" th:href="@{/clientes}">

@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+      layout:decorate="~{layouts/base}">
+<head>
+    <title>Dashboard</title>
+</head>
+<body>
+<div layout:fragment="content" class="container-fluid mt-4">
+
+    <div class="d-flex flex-wrap justify-content-between align-items-center mb-4 gap-2">
+        <div>
+            <h2 class="mb-0">Dashboard de chamados</h2>
+            <p class="text-body-secondary mb-0" th:if="${equipe}">Visão geral de todos os chamados técnicos</p>
+            <p class="text-body-secondary mb-0" th:unless="${equipe}">Seus chamados técnicos</p>
+        </div>
+        <a th:href="@{/chamados/novo}" class="btn btn-primary">
+            <i class="bi bi-plus-lg"></i> Abrir chamado
+        </a>
+    </div>
+
+    <div class="row g-3 mb-4">
+        <div class="col-6 col-xl-3">
+            <div class="card h-100 border-0 shadow-sm">
+                <div class="card-body">
+                    <div class="text-body-secondary small text-uppercase">Total</div>
+                    <div class="display-6 fw-semibold" th:text="${resumo.total}">0</div>
+                    <div class="small text-body-secondary">chamados registrados</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-6 col-xl-3">
+            <div class="card h-100 border-0 shadow-sm border-start border-4 border-warning">
+                <div class="card-body">
+                    <div class="text-body-secondary small text-uppercase">Em aberto</div>
+                    <div class="display-6 fw-semibold text-warning" th:text="${resumo.abertos}">0</div>
+                    <div class="small text-body-secondary">aguardando atendimento</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-6 col-xl-3">
+            <div class="card h-100 border-0 shadow-sm border-start border-4 border-success">
+                <div class="card-body">
+                    <div class="text-body-secondary small text-uppercase">Resolvidos</div>
+                    <div class="display-6 fw-semibold text-success" th:text="${resumo.resolvidos}">0</div>
+                    <div class="small text-body-secondary">
+                        <span th:text="${resumo.percentualResolvidos} + '%'">0%</span> do total
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-6 col-xl-3">
+            <div class="card h-100 border-0 shadow-sm">
+                <div class="card-body">
+                    <div class="text-body-secondary small text-uppercase">Tempo médio</div>
+                    <div class="display-6 fw-semibold" th:text="${resumo.tempoMedioResolucao}">—</div>
+                    <div class="small text-body-secondary">da abertura à resolução</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row g-3 mb-4">
+        <div class="col-12 col-xl-8">
+            <div class="card h-100 border-0 shadow-sm">
+                <div class="card-body">
+                    <h5 class="card-title">Movimentação dos últimos 7 dias</h5>
+                    <canvas id="graficoDias" height="110"></canvas>
+                </div>
+            </div>
+        </div>
+        <div class="col-12 col-xl-4">
+            <div class="card h-100 border-0 shadow-sm">
+                <div class="card-body">
+                    <h5 class="card-title">Situação</h5>
+                    <canvas id="graficoStatus" height="190"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row g-3">
+        <div class="col-12" th:classappend="${equipe} ? 'col-xl-8' : ''">
+            <div class="card h-100 border-0 shadow-sm">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <h5 class="card-title mb-0">Chamados recentes</h5>
+                        <a th:href="@{/chamados}" class="btn btn-sm btn-outline-secondary">Ver todos</a>
+                    </div>
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle mb-0">
+                            <thead>
+                            <tr>
+                                <th>Título</th>
+                                <th>Solicitante</th>
+                                <th>Abertura</th>
+                                <th>Status</th>
+                            </tr>
+                            </thead>
+                            <tbody>
+                            <tr th:each="chamado : ${resumo.recentes}">
+                                <td>
+                                    <a th:href="@{'/chamados/' + ${chamado.id}}"
+                                       th:text="${chamado.titulo}" class="text-decoration-none">Título</a>
+                                </td>
+                                <td th:text="${chamado.solicitante.username}">usuário</td>
+                                <td th:text="${#temporals.format(chamado.dataAbertura, 'dd/MM/yyyy HH:mm')}">—</td>
+                                <td>
+                                    <span class="badge"
+                                          th:classappend="${chamado.resolvido} ? 'text-bg-success' : 'text-bg-warning'"
+                                          th:text="${chamado.status}">STATUS</span>
+                                </td>
+                            </tr>
+                            <tr th:if="${resumo.recentes.isEmpty()}">
+                                <td colspan="4" class="text-center text-body-secondary py-4">
+                                    Nenhum chamado registrado ainda.
+                                </td>
+                            </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-12 col-xl-4" th:if="${equipe}">
+            <div class="card h-100 border-0 shadow-sm">
+                <div class="card-body">
+                    <h5 class="card-title">Resolvidos por técnico</h5>
+                    <ul class="list-group list-group-flush">
+                        <li class="list-group-item d-flex justify-content-between align-items-center px-0"
+                            th:each="linha : ${resumo.porTecnico}">
+                            <span><i class="bi bi-person-badge"></i> <span th:text="${linha.tecnico}">técnico</span></span>
+                            <span class="badge text-bg-secondary rounded-pill" th:text="${linha.resolvidos}">0</span>
+                        </li>
+                        <li class="list-group-item text-center text-body-secondary px-0"
+                            th:if="${resumo.porTecnico.isEmpty()}">
+                            Nenhum chamado resolvido ainda.
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+    <script th:inline="javascript">
+        const dias = /*[[${resumo.ultimosDias}]]*/ [];
+        const abertos = /*[[${resumo.abertos}]]*/ 0;
+        const resolvidos = /*[[${resumo.resolvidos}]]*/ 0;
+
+        Chart.defaults.color = getComputedStyle(document.body).color;
+        Chart.defaults.font.family = getComputedStyle(document.body).fontFamily;
+
+        new Chart(document.getElementById('graficoDias'), {
+            type: 'bar',
+            data: {
+                labels: dias.map(d => d.dia),
+                datasets: [
+                    { label: 'Abertos', data: dias.map(d => d.abertos), backgroundColor: '#f0ad4e', borderRadius: 4 },
+                    { label: 'Resolvidos', data: dias.map(d => d.resolvidos), backgroundColor: '#2e9e5b', borderRadius: 4 }
+                ]
+            },
+            options: {
+                responsive: true,
+                scales: { y: { beginAtZero: true, ticks: { precision: 0 } } },
+                plugins: { legend: { position: 'bottom' } }
+            }
+        });
+
+        new Chart(document.getElementById('graficoStatus'), {
+            type: 'doughnut',
+            data: {
+                labels: ['Em aberto', 'Resolvidos'],
+                datasets: [{ data: [abertos, resolvidos], backgroundColor: ['#f0ad4e', '#2e9e5b'], borderWidth: 0 }]
+            },
+            options: { responsive: true, cutout: '62%', plugins: { legend: { position: 'bottom' } } }
+        });
+    </script>
+</div>
+</body>
+</html>
