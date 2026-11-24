@@ -35,15 +35,17 @@ O microserviço reaproveita o **sistema de login já existente**: os mesmos usu�
 
 ## Endpoints
 
-Todos exigem autenticação **HTTP Basic** (usuário e senha do ThinDesk).
+Todos exigem autenticação **HTTP Basic** (usuário e senha do ThinDesk), exceto o `GET /api/info`.
 
 | Método | Rota | Descrição | Quem pode |
 |---|---|---|---|
 | `POST` | `/api/chamados` | Abrir chamado | Qualquer usuário autenticado |
+| `GET` | `/api/chamados` | Listar todos os chamados (filtro opcional `?status=ABERTO\|RESOLVIDO`) | **TECNICO** e ADMIN |
 | `GET` | `/api/chamados/usuario/{id}` | Listar chamados de um usuário (filtro opcional `?status=ABERTO\|RESOLVIDO`) | O próprio usuário; TECNICO e ADMIN veem de qualquer um |
 | `GET` | `/api/chamados/{id}` | Consultar detalhes e status de um chamado | O solicitante; TECNICO e ADMIN |
 | `PUT` | `/api/chamados/{id}/resolver` | Registrar a solução e resolver o chamado | **TECNICO** e ADMIN |
 | `GET` | `/api/me` | Dados do usuário autenticado (útil para descobrir o próprio `id`) | Qualquer usuário autenticado |
+| `GET` | `/api/info` | Nome do serviço, versão e status (health check) | Público, sem autenticação |
 
 ### Abrir chamado
 
@@ -128,6 +130,49 @@ Em erros de validação, o campo `campos` traz a mensagem de cada campo inválid
 | Chamado ou usuário inexistente | `404` |
 | Requisição sem credenciais ou com senha errada | `401` |
 
+## Versionamento
+
+A versão atual do sistema é **`1.1.0-beta`**. Ela aparece no rodapé do menu lateral do app web e no
+endpoint público `GET /api/info` do microserviço, e é a mesma versão declarada no `pom.xml` pai —
+os três módulos (`auth-core`, `thindesk-web` e `chamados-service`) são publicados juntos, com um
+único número de versão.
+
+O projeto adota o **Versionamento Semântico 2.0.0** ([semver.org](https://semver.org/lang/pt-BR/)),
+no formato:
+
+```
+MAIOR.MENOR.CORREÇÃO-PRÉ-LANÇAMENTO
+  1  .  1  .    0       -    beta
+```
+
+| Parte | Quando muda | Exemplo neste projeto |
+|---|---|---|
+| **MAIOR** (`1`) | Mudança incompatível com a versão anterior: um endpoint removido ou com contrato alterado, ou uma mudança que obrigue a refazer a configuração | Trocar o HTTP Basic por outro esquema de autenticação levaria a `2.0.0` |
+| **MENOR** (`1`) | Funcionalidade nova mantendo compatibilidade com quem já usa a versão anterior | O dashboard e o `GET /api/chamados` levaram a versão de `1.0.0` para `1.1.0` |
+| **CORREÇÃO** (`0`) | Correção de defeito sem mudar o contrato nem adicionar funcionalidade | Um acerto no cálculo do tempo médio do dashboard geraria `1.1.1` |
+| **PRÉ-LANÇAMENTO** (`beta`) | Indica que a versão ainda não é considerada estável para produção | `alpha` → `beta` → versão final sem sufixo |
+
+**Os rótulos de pré-lançamento usados aqui:**
+
+- **`alpha`** — funcionalidade em construção, sujeita a mudanças de contrato a qualquer momento.
+- **`beta`** — funcionalidade completa e testada, em validação; o contrato da API já é considerado estável.
+- **sem sufixo** (`1.1.0`) — versão estável, pronta para uso em produção.
+
+Pela regra do SemVer, uma versão de pré-lançamento tem precedência **menor** que a versão normal
+de mesmo número: `1.1.0-alpha` < `1.1.0-beta` < `1.1.0`.
+
+**Histórico de versões:**
+
+| Versão | Data | Marco |
+|---|---|---|
+| `1.1.0-beta` | 24/11/2026 | Dashboard e telas de chamados no app web consumindo o microserviço |
+| `1.0.0-alpha` | 22/10/2026 | Microserviço REST de chamados (abertura, consulta e resolução) |
+
+O detalhamento de cada versão fica no **[CHANGELOG.md](CHANGELOG.md)**, no formato
+[Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/). As mensagens de commit seguem o padrão
+[Conventional Commits](https://www.conventionalcommits.org/pt-br/) (`feat`, `fix`, `docs`,
+`refactor`), o que torna direto decidir se a próxima versão muda a parte MENOR ou a de CORREÇÃO.
+
 ## Tecnologias
 
 | Tecnologia | Versão |
@@ -201,8 +246,8 @@ No Linux/macOS, use `./mvnw` no lugar de `.\mvnw.cmd`.
 
 ```bash
 .\mvnw.cmd clean package
-java -jar thindesk-web/target/thindesk-web-1.0-alpha.jar
-java -jar chamados-service/target/chamados-service-1.0-alpha.jar
+java -jar thindesk-web/target/thindesk-web-1.1.0-beta.jar
+java -jar chamados-service/target/chamados-service-1.1.0-beta.jar
 ```
 
 ## Testando com o Postman

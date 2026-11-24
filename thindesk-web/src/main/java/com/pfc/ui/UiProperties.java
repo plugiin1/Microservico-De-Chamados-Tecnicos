@@ -17,6 +17,8 @@ public class UiProperties {
 
     private String temaPadrao = "padrao";
 
+    private String versao = "";
+
     private Map<String, Tema> temas = new LinkedHashMap<>();
 
     @Getter

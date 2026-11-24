@@ -5,7 +5,7 @@
     <parent>
         <groupId>com.pfc</groupId>
         <artifactId>thindesk-parent</artifactId>
-        <version>1.0-alpha</version>
+        <version>1.1.0-beta</version>
     </parent>
 
     <artifactId>chamados-service</artifactId>

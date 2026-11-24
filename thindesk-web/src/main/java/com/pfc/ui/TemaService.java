@@ -36,7 +36,8 @@ public class TemaService {
         String tema = resolver(request);
         UiProperties.Tema config = properties.getTemas().get(tema);
         String modo = config != null ? config.getModo() : "light";
-        return new UiContext(properties.getNome(), properties.getLogo(), tema, modo, properties.getTemas());
+        return new UiContext(properties.getNome(), properties.getLogo(), tema, modo,
+                properties.getVersao(), properties.getTemas());
     }
 
     public ResponseCookie criarCookie(String tema) {

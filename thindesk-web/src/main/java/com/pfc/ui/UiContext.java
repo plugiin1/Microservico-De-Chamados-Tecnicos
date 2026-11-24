@@ -7,5 +7,6 @@ public record UiContext(
         String logo,
         String tema,
         String modo,
+        String versao,
         Map<String, UiProperties.Tema> temas) {
 }

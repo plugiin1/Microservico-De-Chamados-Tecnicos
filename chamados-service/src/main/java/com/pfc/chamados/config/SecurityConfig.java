@@ -36,7 +36,7 @@ public class SecurityConfig {
             .logout(AbstractHttpConfigurer::disable)
             .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(auth -> auth
-                .requestMatchers("/error").permitAll()
+                .requestMatchers("/error", "/api/info").permitAll()
                 .requestMatchers(HttpMethod.PUT, "/api/chamados/*/resolver")
                     .hasAnyRole(Role.TECNICO.name(), Role.ADMIN.name())
                 .anyRequest().authenticated()
