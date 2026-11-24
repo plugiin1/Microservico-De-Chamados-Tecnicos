@@ -22,6 +22,9 @@ O formato segue o [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) e 
   `.dockerignore`.
 - Suporte à porta definida pela hospedagem (`PORT`), cabeçalhos de proxy no app web e cache de
   templates e nível de log configuráveis por variável de ambiente.
+- Tolerância à hibernação do plano gratuito: as consultas ao microserviço são repetidas enquanto
+  ele estiver subindo (`502`, `503` e `504`) e um ping periódico opcional
+  (`CHAMADOS_API_KEEP_ALIVE`) mantém o serviço acordado.
 
 ### Alterado
 

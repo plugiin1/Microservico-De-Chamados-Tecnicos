@@ -12,4 +12,6 @@ import org.springframework.stereotype.Component;
 public class ChamadosApiProperties {
 
     private String url = "http://localhost:8081";
+
+    private boolean keepAlive = false;
 }

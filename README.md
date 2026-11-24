@@ -220,9 +220,11 @@ Qualquer pessoa pode entrar com o usuário de demonstração abaixo, ou criar a 
 | Técnico | `tecnico.demo` | `Tecnico@2026` | dashboard de todos os chamados; pode resolver |
 
 > **Primeiro acesso demora.** No plano gratuito do Render os serviços hibernam após 15 minutos sem
-> uso, e o primeiro acesso leva cerca de um minuto para acordar o container. Como o app web conversa
-> com o microserviço, pode ser preciso esperar as duas partidas: se o dashboard demorar, basta
-> recarregar a página.
+> uso, e acordar o container leva cerca de um minuto. O sistema trata isso sozinho: nas consultas, o
+> app web repete a chamada ao microserviço enquanto ele estiver subindo (respostas `502`, `503` e
+> `504`), em até 10 tentativas espaçadas de 8 segundos, em vez de mostrar erro. Enquanto o app web
+> está em uso, um ping a cada 10 minutos (`CHAMADOS_API_KEEP_ALIVE`) mantém o microserviço acordado.
+> Na prática, só a primeira página depois de um período ocioso é lenta.
 
 ### Como o deploy está montado
 
@@ -248,6 +250,8 @@ o cookie de sessão é marcado como `secure` e o cache do Thymeleaf fica ligado.
    |---|---|
    | `thindesk-chamados-service` | `MONGODB_URI` |
    | `thindesk-web` | `MONGODB_URI`, `ADMIN_USERNAME`, `ADMIN_EMAIL`, `ADMIN_PASSWORD`, `CHAMADOS_API_URL` |
+
+   O `render.yaml` já liga o `CHAMADOS_API_KEEP_ALIVE` no app web.
 
 4. Suba primeiro o `thindesk-chamados-service`. Quando ele ficar **Live**, copie a URL pública dele
    e informe em `CHAMADOS_API_URL` no `thindesk-web` (sem barra no final), salvando com
@@ -309,6 +313,7 @@ cp .env.example .env
 | `ADMIN_PASSWORD` | ✅ | Senha do administrador inicial | — |
 | `CHAMADOS_PORT` | | Porta do microserviço | `8081` |
 | `CHAMADOS_API_URL` | | URL do microserviço usada pelo app web | `http://localhost:8081` |
+| `CHAMADOS_API_KEEP_ALIVE` | | Ping periódico do app web no microserviço, para evitar a hibernação do plano gratuito | `false` |
 | `PORT` | | Porta imposta pela hospedagem; tem precedência sobre as portas acima | — |
 | `LOG_LEVEL` / `THYMELEAF_CACHE` | | Nível de log e cache de templates | `DEBUG` / `false` |
 | `SESSION_TIMEOUT` / `COOKIE_SECURE` | | Sessão do app web | `30m` / `false` |

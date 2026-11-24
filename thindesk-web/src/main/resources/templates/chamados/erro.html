@@ -12,6 +12,10 @@
             <i class="bi bi-exclamation-triangle display-4 text-warning"></i>
             <h3 class="mt-3" th:text="'Erro ' + ${status}">Erro</h3>
             <p class="text-body-secondary" th:text="${mensagem}">mensagem</p>
+            <p class="text-body-secondary small" th:if="${status == 502 or status == 503 or status == 504}">
+                No plano gratuito o microserviço hiberna após 15 minutos sem uso e leva cerca de um
+                minuto para acordar. Tente novamente em instantes.
+            </p>
             <a th:href="@{/dashboard}" class="btn btn-primary">Voltar ao dashboard</a>
         </div>
     </div>

@@ -50,3 +50,5 @@ services:
         value: INFO
       - key: CHAMADOS_API_URL
         sync: false
+      - key: CHAMADOS_API_KEEP_ALIVE
+        value: "true"
