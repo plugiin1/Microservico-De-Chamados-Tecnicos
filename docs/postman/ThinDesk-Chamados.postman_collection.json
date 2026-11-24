@@ -6,10 +6,10 @@
   },
   "variable": [
     { "key": "baseUrl", "value": "http://localhost:8081" },
-    { "key": "clienteUser", "value": "teste_cliente" },
-    { "key": "clientePass", "value": "Senha1234" },
-    { "key": "tecnicoUser", "value": "tecnico1" },
-    { "key": "tecnicoPass", "value": "Tecnico123" },
+    { "key": "clienteUser", "value": "demo" },
+    { "key": "clientePass", "value": "Demo@2026" },
+    { "key": "tecnicoUser", "value": "tecnico.demo" },
+    { "key": "tecnicoPass", "value": "Tecnico@2026" },
     { "key": "usuarioId", "value": "" },
     { "key": "chamadoId", "value": "" }
   ],

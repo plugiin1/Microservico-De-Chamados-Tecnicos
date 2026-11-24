@@ -4,6 +4,10 @@ Evolução do **ThinDesk** com a implementação de um **microserviço REST em J
 
 **Aplicação publicada:** https://thindesk-web.onrender.com — entre com `demo` / `Demo@2026` ou crie sua conta. Detalhes em [Deploy](#deploy).
 
+![Dashboard de chamados do ThinDesk](docs/images/dashboard.png)
+
+*Dashboard do ThinDesk em produção, com os indicadores de chamados, a movimentação dos últimos 7 dias, a distribuição por situação e o ranking de técnicos.*
+
 O microserviço reaproveita o **sistema de login já existente**: os mesmos usuários, perfis (`ADMIN`, `TECNICO`, `CLIENTE`) e senhas BCrypt, armazenados no MongoDB Atlas.
 
 ## Arquitetura
@@ -11,14 +15,14 @@ O microserviço reaproveita o **sistema de login já existente**: os mesmos usu�
 
 ```
                     ┌──────────────────────────┐
-  Navegador ──────► │ thindesk-web  :8080      │  login, cadastro, painel admin, temas
-                    └────────────┬─────────────┘
-                                 │ usa
-                         ┌───────▼───────┐
-                         │   auth-core   │  Usuario, Role, BCrypt, UserDetailsService
-                         └───────▲───────┘
-                                 │ usa
-                    ┌────────────┴─────────────┐
+  Navegador ──────► │ thindesk-web  :8080      │  login, cadastro, dashboard,
+                    └───┬──────────────────┬───┘  chamados, painel admin, temas
+                        │ usa              │ HTTP Basic
+                ┌───────▼───────┐          │ (credenciais do usuário logado)
+                │   auth-core   │          │
+                └───────▲───────┘          │
+                        │ usa              │
+                    ┌───┴──────────────────▼───┐
   Postman ────────► │ chamados-service :8081   │  API REST de chamados (HTTP Basic)
                     └────────────┬─────────────┘
                                  │
@@ -30,10 +34,30 @@ O microserviço reaproveita o **sistema de login já existente**: os mesmos usu�
 | Módulo | Tipo | Responsabilidade |
 |---|---|---|
 | `auth-core` | biblioteca | Entidade `Usuario`, enum `Role`, `UsuarioRepository`, `UsuarioDetailsService` e `PasswordEncoder` (BCrypt). Compartilhada pelos dois apps |
-| `thindesk-web` | app (porta **8080**) | Interface Thymeleaf: login, cadastro, painel administrativo de usuários e temas |
+| `thindesk-web` | app (porta **8080**) | Interface Thymeleaf: login, cadastro, **dashboard e telas de chamados**, painel administrativo de usuários e temas. Consome o microserviço por HTTP |
 | `chamados-service` | app (porta **8081**) | **Microserviço** REST de chamados técnicos |
 
 **Como a autenticação é utilizada:** o `chamados-service` depende do `auth-core` e valida as credenciais enviadas por **HTTP Basic** no mesmo `UsuarioDetailsService` usado pelo login web. Um usuário criado ou promovido no ThinDesk web passa a valer na API na hora.
+
+## Interface web
+
+| Tela | Rota | Quem acessa |
+|---|---|---|
+| **Dashboard** | `/dashboard` | todos. Cliente vê os próprios números; técnico e administrador veem os de toda a operação |
+| Lista de chamados | `/chamados` (filtros `?status=ABERTO\|RESOLVIDO`) | todos, com o mesmo recorte por perfil |
+| Abertura de chamado | `/chamados/novo` | todos |
+| Detalhe e resolução | `/chamados/{id}` | o solicitante vê; técnico e administrador resolvem |
+| Gestão de usuários | `/admin/usuarios` | administrador |
+
+O dashboard mostra total, em aberto, resolvidos, percentual de resolução e tempo médio de
+atendimento, além de um gráfico de barras com a movimentação dos últimos 7 dias, uma rosca com a
+distribuição por situação, os chamados recentes e o ranking de chamados resolvidos por técnico.
+
+**O app web não acessa a coleção de chamados diretamente.** Todas essas telas consomem o
+`chamados-service` por HTTP, autenticando com **HTTP Basic** usando as credenciais do usuário
+logado, guardadas na sessão no momento do login. Na prática, o navegador fala com o app web, e o
+app web fala com o microserviço como se fosse o próprio usuário — as mesmas regras de permissão da
+API valem para a interface, sem código duplicado.
 
 ## Endpoints
 
@@ -225,9 +249,16 @@ o cookie de sessão é marcado como `secure` e o cache do Thymeleaf fica ligado.
    | `thindesk-chamados-service` | `MONGODB_URI` |
    | `thindesk-web` | `MONGODB_URI`, `ADMIN_USERNAME`, `ADMIN_EMAIL`, `ADMIN_PASSWORD`, `CHAMADOS_API_URL` |
 
-4. Em `CHAMADOS_API_URL`, informe a URL pública do microserviço já publicado
-   (`https://thindesk-chamados-service.onrender.com`) e aguarde o novo deploy do app web.
+4. Suba primeiro o `thindesk-chamados-service`. Quando ele ficar **Live**, copie a URL pública dele
+   e informe em `CHAMADOS_API_URL` no `thindesk-web` (sem barra no final), salvando com
+   *Save, rebuild and deploy*. Dentro do container, `localhost` é o próprio serviço — apontar para
+   `http://localhost:8081` faz o dashboard responder **503**.
 5. Confirme que `GET /api/info` do microserviço responde com a versão, e faça login no app web.
+
+> **Atenção à ordem de criação do administrador.** O administrador é criado na **primeira** execução
+> em um banco vazio, com a `ADMIN_PASSWORD` daquele ambiente. Se você rodar o app local apontando
+> para o mesmo banco antes do deploy, o admin nasce com a senha do `.env` local e a variável do
+> Render é ignorada.
 
 ## Tecnologias
 
@@ -277,22 +308,39 @@ cp .env.example .env
 | `ADMIN_USERNAME` / `ADMIN_EMAIL` | | Administrador inicial | `admin` / `admin@thindesk.local` |
 | `ADMIN_PASSWORD` | ✅ | Senha do administrador inicial | — |
 | `CHAMADOS_PORT` | | Porta do microserviço | `8081` |
+| `CHAMADOS_API_URL` | | URL do microserviço usada pelo app web | `http://localhost:8081` |
+| `PORT` | | Porta imposta pela hospedagem; tem precedência sobre as portas acima | — |
+| `LOG_LEVEL` / `THYMELEAF_CACHE` | | Nível de log e cache de templates | `DEBUG` / `false` |
 | `SESSION_TIMEOUT` / `COOKIE_SECURE` | | Sessão do app web | `30m` / `false` |
 | `APP_NOME` / `APP_TEMA` | | Nome e tema do app web | `Thindesk` / `padrao` |
 
-¹ Usada apenas na primeira execução do `thindesk-web`, para criar o administrador.
+¹ Usada apenas na primeira execução do `thindesk-web` **em um banco vazio**, para criar o
+administrador. Se o usuário `admin` já existir, a variável é ignorada.
+
+> **Cuidado com variáveis de ambiente do sistema.** No Spring, uma variável de ambiente do sistema
+> operacional tem **precedência sobre o arquivo `.env`**. Se existir um `MONGODB_URI` definido no
+> Windows (ou exportado no shell), é ele que vale, e as mudanças no `.env` passam despercebidas.
+> Para conferir o que o app realmente está usando:
+>
+> ```powershell
+> [Environment]::GetEnvironmentVariable('MONGODB_URI','User')   # vazio = o .env está valendo
+> ```
 
 ## Executando
 
 Rode os dois apps (cada um em um terminal):
 
 ```bash
-# App web (login, cadastro, painel admin) → http://localhost:8080
-.\mvnw.cmd -pl thindesk-web -am compile spring-boot:run
-
 # Microserviço de chamados → http://localhost:8081
 .\mvnw.cmd -pl chamados-service -am compile spring-boot:run
+
+# App web (login, dashboard, chamados, painel admin) → http://localhost:8080
+.\mvnw.cmd -pl thindesk-web -am compile spring-boot:run
 ```
+
+Suba o microserviço **primeiro**: o dashboard do app web depende dele. Com a API fora do ar, as
+telas de chamados respondem **503** com a mensagem de que não foi possível falar com o
+microserviço.
 
 No Linux/macOS, use `./mvnw` no lugar de `.\mvnw.cmd`.
 
@@ -311,10 +359,13 @@ java -jar chamados-service/target/chamados-service-1.1.0-beta.jar
 A coleção pronta está em **[`docs/postman/ThinDesk-Chamados.postman_collection.json`](docs/postman/ThinDesk-Chamados.postman_collection.json)**.
 
 1. No Postman, clique em **Import** e selecione o arquivo.
-2. Garanta que existam os usuários usados pela coleção (ou altere as variáveis da coleção):
-   - `teste_cliente` / `Senha1234`: cadastre-se em http://localhost:8080/cadastro (o cadastro cria um CLIENTE).
-   - `tecnico1` / `Tecnico123`: cadastre-se e, como `admin`, promova a **Técnico** em http://localhost:8080/admin/usuarios.
-3. Execute as requisições **na ordem numerada** (1 → 11). Elas guardam o `id` do usuário e do chamado criado nas variáveis `usuarioId` e `chamadoId`, e cada uma tem testes automáticos que aparecem na aba **Test Results**.
+2. A coleção já vem com as credenciais de demonstração (`demo` e `tecnico.demo`) nas variáveis
+   `clienteUser`, `clientePass`, `tecnicoUser` e `tecnicoPass`.
+3. Para testar **contra o deploy**, troque a variável `baseUrl` da coleção de
+   `http://localhost:8081` para `https://thindesk-chamados-service.onrender.com`. Para testar local,
+   cadastre os dois usuários em http://localhost:8080/cadastro e promova o técnico, como `admin`,
+   em http://localhost:8080/admin/usuarios.
+4. Execute as requisições **na ordem numerada** (1 → 11). Elas guardam o `id` do usuário e do chamado criado nas variáveis `usuarioId` e `chamadoId`, e cada uma tem testes automáticos que aparecem na aba **Test Results**.
 
 | # | Requisição | Esperado |
 |---|---|---|
@@ -372,15 +423,25 @@ Os chamados ficam na coleção **`chamados`** do banco `thindesk`:
 ├── chamados-service/               # microserviço (porta 8081)
 │   └── com/pfc/chamados/
 │       ├── config/                 # SecurityConfig (HTTP Basic, stateless)
-│       ├── controller/             # ChamadoController, UsuarioController
+│       ├── controller/             # ChamadoController, UsuarioController, InfoController
 │       ├── dto/                    # requisições, respostas e formato de erro
 │       ├── entity/                 # Chamado, StatusChamado
 │       ├── exception/              # exceções e ApiExceptionHandler
 │       ├── repository/             # ChamadoRepository
 │       └── service/                # ChamadoService (regras de negócio)
+├── thindesk-web/.../chamados/      # consumo do microserviço pelo app web
+│   ├── client/                     # ChamadosApiClient (RestClient) e credenciais na sessão
+│   ├── controller/                 # telas de dashboard, lista, abertura e resolução
+│   ├── dto/                        # espelho das respostas da API e formulários
+│   └── service/                    # DashboardService (indicadores e séries dos gráficos)
+├── Dockerfile.web                  # imagem do app web
+├── Dockerfile.chamados             # imagem do microserviço
+├── render.yaml                     # blueprint do deploy no Render
+├── CHANGELOG.md                    # histórico de versões
 └── docs/
     ├── ESTRUTURA.md                # estrutura e decisões de design
     ├── ROTEIRO-VIDEO.md            # roteiro da demonstração em vídeo
+    ├── images/                     # print do dashboard
     └── postman/                    # coleção do Postman
 ```
 

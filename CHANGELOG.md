@@ -18,6 +18,10 @@ O formato segue o [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) e 
   técnicos e administradores.
 - Endpoint público `GET /api/info` com nome do serviço, versão e status, usado como health check.
 - Exibição da versão do sistema no menu lateral do app web.
+- Deploy em containers no Render: `Dockerfile.web`, `Dockerfile.chamados`, `render.yaml` e
+  `.dockerignore`.
+- Suporte à porta definida pela hospedagem (`PORT`), cabeçalhos de proxy no app web e cache de
+  templates e nível de log configuráveis por variável de ambiente.
 
 ### Alterado
 
